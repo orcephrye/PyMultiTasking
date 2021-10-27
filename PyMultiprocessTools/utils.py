@@ -735,7 +735,7 @@ class Pool:
                             allow_restart=allow_restart)
         return numOfNewWorkers > 0
 
-    def add_worker(self, workerAutoKill: Optional[bool] = None, allow_restart: bool = False) -> bool:
+    def add_worker(self, workerAutoKill: Optional[bool] = None, allow_restart: bool = False, **kwargs) -> bool:
         """ Adds a single new worker too the Pool.
 
         - :param workerAutoKill: (bool) This determines if the worker ends once their is no longer any work left in
