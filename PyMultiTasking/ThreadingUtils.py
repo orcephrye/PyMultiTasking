@@ -8,8 +8,8 @@
 import logging
 import threading
 from threading import RLock
-from PyMultiprocessTools.utils import wait_lock, Worker, Pool, __PyMultiDec
-from PyMultiprocessTools.utils import __async_raise as a_raise
+from PyMultiTasking.utils import wait_lock, Worker, Pool, __PyMultiDec
+from PyMultiTasking.utils import __async_raise as a_raise
 
 
 # logging.basicConfig(format='%(asctime)s %(levelname)s %(name)s %(funcName)s %(lineno)s %(message)s',
