@@ -57,7 +57,8 @@ import traceback
 import inspect
 import uuid
 import ctypes
-from queue import PriorityQueue, Empty
+from queue import PriorityQueue, Empty, Queue
+from multiprocessing import Manager
 from multiprocessing.queues import JoinableQueue
 from multiprocessing.synchronize import RLock, SemLock
 from multiprocessing import RLock as MultiProcRLock
@@ -658,7 +659,7 @@ class Pool:
     __regRLock = None
     __pool_registry = None
 
-    def __init__(self, workerType: type, maxWorkers: Optional[int] = None, tasks: Optional[PriorityTaskQueue] = None,
+    def __init__(self, workerType: type, maxWorkers: Optional[int] = None, tasks: Optional[Queue] = None,
                  daemon: bool = True, timeout: int = 60, workerAutoKill: bool = True, prepopulate: int = 0,
                  name: str = "", log: Optional[logging] = None):
         self.workerType = workerType

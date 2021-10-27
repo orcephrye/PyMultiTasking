@@ -36,8 +36,6 @@ class ThreadWorker(Worker, threading.Thread):
         stop and works tasks that come from a the PriorityTaskQueue maintained by the Pool.
     """
 
-    __workerAutoKill = True
-    __defaultTimeout = 10
     workerType = 'THREAD'
 
     def __init__(self, *args, **kwargs):
