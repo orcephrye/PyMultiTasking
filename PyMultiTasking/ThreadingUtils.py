@@ -8,7 +8,9 @@
 import logging
 import threading
 from threading import RLock
-from PyMultiTasking.utils import wait_lock, Worker, Pool, __PyMultiDec
+from PyMultiTasking.Tasks import ThreadTask, PriorityTaskQueue
+from PyMultiTasking.libs import Worker, Pool, __PyMultiDec
+from PyMultiTasking.utils import wait_lock
 from PyMultiTasking.utils import __async_raise as a_raise
 
 
@@ -18,18 +20,6 @@ log = logging.getLogger('Threading')
 # logging.getLoggerClass().manager.emittedNoHandlerWarning = 1
 
 
-class Threaded(__PyMultiDec):
-    """<a name="Threaded"></a>
-        To be used as a Decorator. When decorating a function/method that callable when be run in a Python thread.
-        The function will return a 'Task' object.
-    """
-
-    def __init__(self, *args, **kwargs):
-        self.wType = ThreadWorker
-        self.pType = ThreadPool
-        super(Threaded, self).__init__(*args, **kwargs)
-
-
 class ThreadWorker(Worker, threading.Thread):
     """ <a name="ThreadWorker"></a>
         This is designed to be managed by a ThreadPool. However, it can run on its own as well. It runs until told to
@@ -37,6 +27,7 @@ class ThreadWorker(Worker, threading.Thread):
     """
 
     workerType = 'THREAD'
+    taskObj = ThreadTask
 
     def __init__(self, *args, **kwargs):
         kwargs.update({'log': log})
@@ -81,12 +72,16 @@ class ThreadPool(Pool):
         the taskQueue until they are told to stop. The ThreadPool class keeps a registry of all ThreadPools objects.
     """
 
+    poolType = 'PROCESS'
+    workerObj = ThreadWorker
+    taskObj = ThreadTask
+    queueObj = PriorityTaskQueue
     __regRLock = RLock()
     __pool_registry = []
 
     def __init__(self, *args, **kwargs):
         kwargs.update({'log': log})
-        super(ThreadPool, self).__init__(ThreadWorker, *args, **kwargs)
+        super(ThreadPool, self).__init__(*args, **kwargs)
         ThreadPool.register_pool(self)
 
     @classmethod
@@ -123,5 +118,17 @@ class ThreadPool(Pool):
                 cls.__pool_registry.append(pool)
 
 
-if __name__ == '__main__':
-    print(f'This should be called as a module.')
+class Threaded(__PyMultiDec):
+    """<a name="Threaded"></a>
+        To be used as a Decorator. When decorating a function/method that callable when be run in a Python thread.
+        The function will return a 'Task' object.
+    """
+
+    wType = ThreadWorker
+    pType = ThreadPool
+    task = ThreadTask
+
+    def __init__(self, *args, **kwargs):
+        self.wType = ThreadWorker
+        self.pType = ThreadPool
+        super(Threaded, self).__init__(*args, **kwargs)
