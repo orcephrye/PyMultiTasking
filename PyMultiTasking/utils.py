@@ -230,22 +230,12 @@ def Limiter(num, call_only=False):
     """
 
     def wrapper(func):
-        inject = True
-        if call_only or isinstance(func, FunctionType):
-            sem = Semaphore(num)
-            inject = False
-        elif getattr(getattr(func, '__class__', None), '__name__', '') == 'Threaded':
-            sem = SemaphoreThreading(num)
-        elif getattr(getattr(func, '__class__', None), '__name__', '') == 'Processed':
-            sem = SemephoreProcessing(num, ctx=multiprocessing.get_context())
-        else:
-            inject = False
-            sem = Semaphore(num)
+        sem = SemephoreProcessing(num, ctx=multiprocessing.get_context())
 
         @wraps(func)
         def wrapped(*args, **kwargs):
-            if inject:
-                kwargs.update({'_task_semaphore': sem})
+            if call_only is False:
+                kwargs.update({'_worker_kwargs': {'_task_semaphore': sem}})
                 return func(*args, **kwargs)
             else:
                 with sem:

@@ -9,6 +9,7 @@ import logging
 import traceback
 import uuid
 from queue import Empty, Queue
+import multiprocessing
 from multiprocessing import Pipe
 from multiprocessing.synchronize import RLock
 from multiprocessing import RLock as MultiProcRLock
@@ -40,8 +41,7 @@ def get_cpu_count() -> int:
     """Return the number of Logic CPU Cores on the system"""
 
     try:
-        from multiprocessing import cpu_count
-        return cpu_count()
+        return multiprocessing.cpu_count()
     except:
         return _DEFAULT_MAX_WORKERS
 
@@ -59,7 +59,7 @@ class __PyMultiDec:
             self.func = args[0]
         else:
             self.func = None
-        self.callback_func = kwargs.get('callback_func', None)
+        self.callback_func = kwargs.pop('callback_func', None)
         self.kwargsLength = len(kwargs)
         self.daemon = kwargs.pop('daemon', None)
         self.pool = kwargs.pop('pool', None)
@@ -82,10 +82,11 @@ class __PyMultiDec:
                                                                      if k.startswith('_pool_')})
 
     def __call__(self, *args, **kwargs):
-        print(f'calling test_dec: args={args} - kwargs={kwargs}')
+        print(f'calling __call__: args={args} - kwargs={kwargs}')
 
         @wraps(self.func)
         def wrapper(*a, **kw):
+            print(f'calling wrapper: args={a} - kwargs={kw}')
             kw.update({k.replace('_task_', ''): v for k, v in kwargs.items() if k.startswith('_task_')})
             keywords = {k.replace('_task_', ''): v for k, v in kw.items() if k.startswith('_task_')}
             for key in keywords:
@@ -104,8 +105,9 @@ class __PyMultiDec:
             elif self.pool:
                 self.pool.submit(task, submit_task_nowait=True, submit_task_autospawn=True, allow_restart=True)
             else:
-                self.wType(target=task, **{k.replace('_worker_', ''): v
-                                           for k, v in kwargs.items() if k.startswith('_worker_')}).start()
+                keywords = {k.replace('_worker_', ''): v for k, v in kwargs.items() if k.startswith('_worker_')}
+                keywords.update({k.replace('_worker_', ''): v for k, v in kw.items() if k.startswith('_worker_')})
+                self.wType(target=task, **keywords).start()
             return task
 
         if self.func is None and callable(args[0]):
@@ -130,6 +132,7 @@ class Worker:
                  personalQue: Optional[ProcessTaskQueue] = None, target: Optional[Callable] = None,
                  name: Optional[str] = None, daemon: bool = True, log: Optional[logging] = None,
                  communication_pipe: Optional[Pipe] = None, **kwargs):
+        print(f'kwargs={kwargs}')
         if target is not None and not isinstance(target, Task):
             target = self.taskObj(target, kill=True)
         self.uuid = str(uuid.uuid4()) if name is None else name
@@ -205,6 +208,7 @@ class Worker:
                     break
                 elif task is not False:
                     self.log.info(f'The task is: {task}')
+                    print(f'_kwargs={self._kwargs}')
                     task(*self._args, **self._kwargs)
                     self.__currentTask = None
                     if not self.__ignore_queue:

@@ -132,7 +132,7 @@ class ThreadTask(EventThreading, Task):
         self.priority = priority
         self.kill = kill
         self.callback_fun = callback_func
-        self.semaphore = semaphore if semaphore is not None else SemaphoreThreading(1)
+        self.semaphore = semaphore
         if isinstance(fn, partial):
             if inject_task and ThreadTask.__inspect_kwargs(fn.func):
                 fn.keywords.update({'TaskObject': self})
@@ -158,7 +158,10 @@ class ThreadTask(EventThreading, Task):
             raise Exception('A Task Object cannot be ran more than once!')
 
         try:
-            self.semaphore.acquire()
+            if '_task_semaphore' in kwargs:
+                self.semaphore = kwargs.pop('_task_semaphore')
+            if self.semaphore:
+                self.semaphore.acquire()
             if self.store_return:
                 self.results = self.task(*args, **kwargs)
                 if self.callback_fun:
@@ -175,7 +178,8 @@ class ThreadTask(EventThreading, Task):
             _log.info(f'{self} succeeded')
         finally:
             self.set()
-            self.semaphore.release()
+            if self.semaphore:
+                self.semaphore.release()
             if self.store_return and self.callback_fun is None:
                 return self.results
 
@@ -265,7 +269,7 @@ class ProcessTask(Task):
         self.__original = True
         self.uuid = str(uuid.uuid4())
         self.event = Event()
-        self.semaphore = semaphore if semaphore is not None else Semaphore(1)
+        self.semaphore = semaphore
         pipereg = PipeRegister.get_pipereg_by_name('ProcessTaskPipes')
         if pipereg is None:
             pipereg = PipeRegister(name='ProcessTaskPipes')
@@ -299,7 +303,7 @@ class ProcessTask(Task):
         self.__original = False
         self.__p_state = None
         self.event = Event()
-        self.semaphore = Semaphore(1)
+        self.semaphore = None
         self.__updateRLock = MultiProcRLock()
 
     def run(self, *args, **kwargs) -> Any:
@@ -313,7 +317,10 @@ class ProcessTask(Task):
             raise Exception('A Task Object cannot be ran more than once!')
 
         try:
-            self.semaphore.acquire()
+            if '_task_semaphore' in kwargs:
+                self.semaphore = kwargs.pop('_task_semaphore')
+            if self.semaphore:
+                self.semaphore.acquire()
             if self.store_return:
                 self.results = self.task(*args, **kwargs)
                 if self.callback_fun:
@@ -346,7 +353,8 @@ class ProcessTask(Task):
         if self.is_set():
             raise Exception('A Task Object cannot be set more then once!')
         self.event.set()
-        self.semaphore.release()
+        if self.semaphore:
+            self.semaphore.release()
         self.__update_state()
         self.__close_pipes()
 
