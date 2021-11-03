@@ -717,7 +717,7 @@ class Pool:
 
     @property
     def unfinished_tasks(self) -> int:
-        """+ This calls the 'unfinishedTasks' property of PriorityTaskQueue. And is equal to the number of tasks
+        """ This calls the 'unfinishedTasks' property of PriorityTaskQueue. And is equal to the number of tasks
             submitted minus the number of times a Task has been Worked by a Worker.
         """
         return self.taskQueue.unfinished_tasks
