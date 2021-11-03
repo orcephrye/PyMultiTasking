@@ -101,6 +101,16 @@ class PipeRegister:
             self.__pipe_reg.update({p_conn.pipe_id: (p_conn, c_conn)})
             return p_conn.pipe_id
 
+    # noinspection PyUnresolvedReferences
+    def shutdown_pipe(self, pipe_id):
+        p_pipe, c_pipe = self.remove(pipe_id)
+        if p_pipe is None:
+            return False
+        PipeRegister.flush_pipe(p_pipe)
+        PipeRegister.flush_pipe(c_pipe)
+        p_pipe.close()
+        c_pipe.close()
+
     def get_all_pipes(self):
         with self.__rlock:
             return self.__pipe_reg
@@ -116,12 +126,14 @@ class PipeRegister:
     def remove(self, pipe_id):
         with self.__rlock:
             if self.has_pipe(pipe_id):
-                return self.__pipe_reg.pop(pipe_id, None)
+                return self.__pipe_reg.pop(pipe_id, (None, None))
+            return None, None
 
     def get_pipes(self, pipe_id):
         with self.__rlock:
             if self.has_pipe(pipe_id):
-                return self.__pipe_reg.get(pipe_id, ())
+                return self.__pipe_reg.get(pipe_id, (None, None))
+            return None, None
 
     def get_parent_pipe(self, pipe_id):
         with self.__rlock:
@@ -148,15 +160,34 @@ class PipeRegister:
             return getattr(self.get_child_pipe(pipe_id), 'recv', PipeRegister.blank_func)()
 
     @staticmethod
+    def flush_pipe(safe_pipe):
+
+        def __clear_pipe(pipe):
+            try:
+                while pipe.closed is not False and pipe.poll():
+                    pipe.recv()
+            except Exception as e:
+                _log.error(f"ERROR in __clear_pipe: {e}")
+                _log.debug(f"[DEBUG] for __clear_pipe: {traceback.format_exc()}")
+
+        if isinstance(safe_pipe, SafePipe):
+            with safe_pipe as p:
+                __clear_pipe(p)
+        else:
+            __clear_pipe(safe_pipe)
+
+    @staticmethod
     def blank_func(*args, **kwargs):
         return None
 
     @classmethod
-    def get_pipereg_by_name(cls, name):
+    def get_pipereg_by_name(cls, name, automake=False):
         with cls.__regRLock:
             for pipereg in cls.__pipe_registry:
                 if name == pipereg.name:
                     return pipereg
+        if automake:
+            return PipeRegister(name=name)
 
     @classmethod
     def get_pipereg(cls, name=None):

@@ -12,12 +12,14 @@ import traceback
 import multiprocessing
 import math
 import time
+import uuid
 from functools import partial
 from threading import Event
 from multiprocessing import RLock, Process
 from PyMultiTasking.Tasks import ProcessTask, ProcessTaskQueue
 from PyMultiTasking.libs import Worker, Pool, __PyMultiDec, get_cpu_count, __INACTIVE__, __STOPPING__, __STOPPED__
 from PyMultiTasking.utils import wait_lock, dummy_func
+from PyMultiTasking.PipeSynchronize import PipeRegister
 from typing import Optional
 
 
@@ -77,156 +79,20 @@ class ProcessPool(Pool):
             kwargs.update({'maxWorkers': math.ceil(get_cpu_count() / 2)})
         if 'workerAutoKill' not in kwargs:
             kwargs.update({'workerAutoKill': False})
+        self.comms_pipes = kwargs.get('comms_pipes', True)
+        kwargs.update({'name': kwargs.pop('name', str(uuid.uuid4()))})
+        if self.comms_pipes:
+            self.pipereg = PipeRegister.get_pipereg_by_name(kwargs.get('name', '')+'_pool', automake=True)
         super(ProcessPool, self).__init__(*args, **kwargs)
-        self.__timeout = self._Pool__timeout
-        self.__taskLock = self._Pool__taskLock
         ProcessPool.register_pool(self)
 
     def add_worker(self, *args, **kwargs) -> bool:
         self.__waitingEvent.wait(timeout=0.1)
+        if self.comms_pipes and self.pipereg:
+            kwargs.update({'name': kwargs.pop('name', str(uuid.uuid4()))})
+            _, child_conn = self.pipereg.create_safepipe(kwargs.get('name', '')+'_worker')
+            kwargs.update({'communication_pipe': child_conn})
         return super(ProcessPool, self).add_worker(*args, **kwargs)
-
-    def remove_worker(self, workerTooRemove: Optional[Worker] = None, timeout: int = 30,
-                      allow_abandon: bool = False) -> bool:
-        """ Removes a single new worker from the Pool. This can be called to remove the last Worker or you can
-            specify a Worker to remove.
-
-        - :param workerTooRemove: (Worker) This is usually sent when a Worker is self terminating
-        - :param timeout: (int) 30, How much time it is willing to wait. NOTE: This is doubled when specifying a
-            worker with the workerTooRemove parameter.
-        - :param allow_abandon: (bool) False, This determines if the thread will simply be abandoned if it cannot
-            normally remove it from the pool. It will only do this if 'safe_stop' and 'terminate' methods fail.
-        - :return: (bool)
-        """
-
-        def wait_helper(wait_time, start_time, ev, wtr):
-            current_time = time.monotonic()
-            while current_time < start_time + wait_time and wtr.is_alive():
-                ev.wait(timeout=0.1)
-            return not wtr.is_alive()
-
-        def _filterHelper(wtr):
-            return not wtr.is_alive()
-
-        try:
-            if self.num_workers <= 0:
-                return False
-            if workerTooRemove in self.workers and workerTooRemove.killed:
-                self.workers.pop(self.workers.index(workerTooRemove))
-                return True
-            e = Event()
-            if workerTooRemove is not None:
-                workerTooRemove.safe_stop()
-                if wait_helper(timeout, time.monotonic(), e, workerTooRemove):
-                    self.workers.pop(self.workers.index(workerTooRemove))
-                    return True
-                self.log.warning(f'[WARN]: worker({workerTooRemove}) needs to be terminated in order to be removed.')
-                getattr(workerTooRemove, 'terminate', dummy_func)()
-                if wait_helper(timeout, time.monotonic(), e, workerTooRemove):
-                    self.workers.pop(self.workers.index(workerTooRemove))
-                    return True
-                if allow_abandon:
-                    self.log.warning(f'[WARN]: worker({workerTooRemove}) is being abandoned.')
-                    worker = self.workers.pop(self.workers.index(workerTooRemove))
-                    if worker.killed is not True:
-                        worker.killed = True
-                    return True
-                return False
-            else:
-                current_num = self.num_workers
-                self.submit(self.taskObj(Worker.__KILL__, priority=self.highest_priority + 1, kill=True),
-                            submit_task_autospawn=False)
-                if timeout > 0:
-                    current = start = time.monotonic()
-                    while current < start + timeout and self.num_workers >= current_num:
-                        e.wait(timeout=0.1)
-                        for worker in filter(_filterHelper, self.workers):
-                            self.workers.pop(self.workers.index(worker))
-                    return self.num_workers < current_num
-                return True
-        except Exception as e:
-            self.log.error(f'[ERROR]: Error occurred while attempting to remove worker: {e}')
-            self.log.debug(f'[DEBUG]: Trace for error while attempting to remove worker: {traceback.format_exc()}')
-            return False
-        finally:
-            if self.num_workers == 0:
-                self.state = __INACTIVE__
-
-    def shutdown(self, timeout: Optional[int] = None, unsafe: Optional[bool] = None) -> bool:
-        """ This sends a kill operation too all the workers and waits for them to complete and then removes the threads.
-            It can also attempt to kill Workers in an unsafe way with the 'terminate' Worker method.
-
-        - :param timeout: (int) The length of time to wait on tasks to be stopped
-        - :param unsafe: (bool/None) True: The 'terminate' method will be called on each Worker. False: Even if the
-                timeout is reached the 'terminate' method will *not* be called. None: This will attempt to safely wait
-                for the Workers too finish but if timeout is reached then the 'terminate' method will be called.
-        - :return: (bool)
-        """
-
-        e = Event()
-        self.state = __STOPPING__
-        if timeout is None:
-            timeout = self.__timeout
-
-        def _filterHelper(wtr):
-            return not wtr.is_alive()
-
-        def _clear_helper(task):
-            return task.task.func != Worker.__KILL__
-
-        def _clear_shutdown_tasks():
-            try:
-                tasks = []
-                while not self.taskQueue.empty():
-                    tasks.append(self.taskQueue.get())
-                    self.taskQueue.task_done()
-                for task in filter(_clear_helper, tasks):
-                    if self.has_workers:
-                        self.taskQueue.put_nowait(task)
-                    else:
-                        self.ignoredTasks.append(task)
-            except Exception as e:
-                self.log.error(f'[ERROR]: Error while clearing old tasks: {e}')
-                self.log.debug(f'[DEBUG]: Trace for error clearing old tasks: {traceback.format_exc()}')
-
-        def _unsafe_shutdown():
-            for worker in self.workers:
-                self.log.info(f'Worker: {worker} will be killed unsafely.')
-                worker.terminate()
-            ct = st = time.monotonic()
-            while ct < st + 1 and self.num_workers > 0:
-                e.wait(timeout=0.1)
-                for w in filter(_filterHelper, self.workers):
-                    self.workers.pop(self.workers.index(w))
-                ct = time.monotonic()
-
-        if unsafe:
-            _unsafe_shutdown()
-            e.wait(timeout=0.1)
-            return self.num_workers == 0
-
-        start_time = time.monotonic()
-        with wait_lock(self.__taskLock, timeout=timeout):
-            for x in range(0, self.num_workers):
-                self.remove_worker(timeout=0)
-            current_time = time.monotonic()
-            while current_time < start_time + timeout:
-                for work in filter(_filterHelper, self.workers):
-                    self.workers.pop(self.workers.index(work))
-                if self.num_workers <= 0:
-                    self.log.info(f'There are no more workers. No need for forced timeout')
-                    break
-                e.wait(timeout=0.1)
-                current_time = time.monotonic()
-            if unsafe is None:
-                _unsafe_shutdown()
-                e.wait(timeout=0.1)
-            _clear_shutdown_tasks()
-
-        if self.num_workers == 0:
-            self.state = __STOPPED__
-            return True
-        return False
 
     @property
     def unfinished_tasks(self) -> int:

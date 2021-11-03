@@ -208,7 +208,6 @@ class Worker:
                     break
                 elif task is not False:
                     self.log.info(f'The task is: {task}')
-                    print(f'_kwargs={self._kwargs}')
                     task(*self._args, **self._kwargs)
                     self.__currentTask = None
                     if not self.__ignore_queue:
@@ -292,7 +291,8 @@ class Pool:
 
     def __init__(self, maxWorkers: Optional[int] = None, tasks: Optional[Queue] = None, daemon: bool = True,
                  timeout: int = 60, workerAutoKill: bool = True, prepopulate: int = 0, name: str = "",
-                 log: Optional[logging] = None):
+                 log: Optional[logging] = None, **kwargs):
+        self._kwargs = kwargs
         self.log = _log if log is None else log
         self.uuid = str(uuid.uuid4())
         self.name = name if name else self.uuid
@@ -313,7 +313,7 @@ class Pool:
             self.setup_workers(numOfWorkers=prepopulate, workerAutoKill=self.__workerAutoKill)
         elif self.taskQueue.qsize() > 0:
             self.setup_workers(numOfWorkers=self.taskQueue.qsize() if self.taskQueue.qsize() <= self.maxWorkers
-                                                                    else self.maxWorkers,
+                                                                   else self.maxWorkers,
                                workerAutoKill=not daemon)
         if daemon is False:
             self.state = __ACTIVE__
@@ -340,7 +340,7 @@ class Pool:
         return f'Pool(UUID={self.uuid}, State={self._state})'
 
     def setup_workers(self, numOfWorkers: int = 1, workerAutoKill: Optional[bool] = None,
-                      allow_restart: bool = False) -> bool:
+                      allow_restart: bool = False, **kwargs) -> bool:
         """ Generally only used by init. This setups Worker threads to be managed by the Pool.
 
         - :param numOfWorkers: (int) Number workers setup. IF the number of workers is higher then the value of
@@ -362,7 +362,7 @@ class Pool:
             numOfNewWorkers = numOfWorkers
         for _ in range(0, numOfNewWorkers):
             self.add_worker(workerAutoKill=self.__workerAutoKill if workerAutoKill is None else workerAutoKill,
-                            allow_restart=allow_restart)
+                            allow_restart=allow_restart, **kwargs)
         return numOfNewWorkers > 0
 
     def add_worker(self, workerAutoKill: Optional[bool] = None, allow_restart: bool = False, **kwargs) -> bool:
@@ -378,7 +378,7 @@ class Pool:
         if self.num_workers >= self.maxWorkers:
             return False
         self.workers.append(self.workerObj(self, workerAutoKill=self.__workerAutoKill if workerAutoKill is None
-                                                                                      else workerAutoKill))
+                                                                                      else workerAutoKill, **kwargs))
         return True
 
     def get_worker(self, uuid=None):
@@ -407,28 +407,43 @@ class Pool:
 
         def wait_helper(wait_time, start_time, ev, wtr):
             current_time = time.monotonic()
-            while current_time < start_time + wait_time and wtr in self.workers:
+            while current_time < start_time + wait_time and wtr.is_alive():
                 ev.wait(timeout=0.1)
+            if self.poolType == 'PROCESS':
+                return not wtr.is_alive()
             return wtr not in self.workers
+
+        def _filterHelper(wtr):
+            return not wtr.is_alive()
+
+        def _removeHelper(wtr):
+            if wtr in self.workers and wtr.killed:
+                if self.poolType == 'PROCESS' and hasattr(self, 'pipereg') and wtr.communication_pipe is not None:
+                    self.pipereg.shutdown_pipe(getattr(wtr.communication_pipe, 'pipe_id', ''))
+                return self.workers.pop(self.workers.index(wtr))
+            return None
 
         try:
             if self.num_workers <= 0:
                 return False
-            if workerTooRemove in self.workers and workerTooRemove.killed:
-                self.workers.pop(self.workers.index(workerTooRemove))
+            if workerTooRemove is not None and _removeHelper(workerTooRemove):
                 return True
             e = Event()
             if workerTooRemove is not None:
                 workerTooRemove.safe_stop()
                 if wait_helper(timeout, time.monotonic(), e, workerTooRemove):
+                    if self.poolType == 'PROCESS':
+                        _removeHelper(workerTooRemove)
                     return True
                 self.log.warning(f'[WARN]: worker({workerTooRemove}) needs to be terminated in order to be removed.')
                 getattr(workerTooRemove, 'terminate', dummy_func)()
                 if wait_helper(timeout, time.monotonic(), e, workerTooRemove):
+                    if self.poolType == 'PROCESS':
+                        _removeHelper(workerTooRemove)
                     return True
                 if allow_abandon:
                     self.log.warning(f'[WARN]: worker({workerTooRemove}) is being abandoned.')
-                    worker = self.workers.pop(self.workers.index(workerTooRemove))
+                    worker = _removeHelper(workerTooRemove)
                     if worker.killed is not True:
                         worker.killed = True
                     return True
@@ -441,6 +456,9 @@ class Pool:
                     current = start = time.monotonic()
                     while current < start + timeout and self.num_workers >= current_num:
                         e.wait(timeout=0.1)
+                        if self.poolType == 'PROCESS':
+                            for worker in filter(_filterHelper, self.workers):
+                                _removeHelper(worker)
                     return self.num_workers < current_num
                 return True
         except Exception as e:
@@ -504,6 +522,14 @@ class Pool:
         if timeout is None:
             timeout = self.__timeout
 
+        def _filterHelper(wtr):
+            return not wtr.is_alive()
+
+        def _removeHelper(wtr):
+            if self.poolType == 'PROCESS' and hasattr(self, 'pipereg') and wtr.communication_pipe is not None:
+                self.pipereg.shutdown_pipe(getattr(wtr.communication_pipe, 'pipe_id', ''))
+            return self.workers.pop(self.workers.index(wtr))
+
         def _clear_helper(task):
             return task.task.func != Worker.__KILL__
 
@@ -526,6 +552,13 @@ class Pool:
             for worker in self.workers:
                 self.log.info(f'Worker: {worker} will be killed unsafely.')
                 worker.terminate()
+            if self.poolType == 'PROCESS':
+                ct = st = time.monotonic()
+                while ct < st + 1 and self.num_workers > 0:
+                    e.wait(timeout=0.1)
+                    for w in filter(_filterHelper, self.workers):
+                        self.workers.pop(self.workers.index(w))
+                    ct = time.monotonic()
 
         if unsafe:
             _unsafe_shutdown()
@@ -538,6 +571,9 @@ class Pool:
                 self.remove_worker(timeout=0)
             current_time = time.monotonic()
             while current_time < start_time + timeout:
+                if self.poolType == 'PROCESS':
+                    for work in filter(_filterHelper, self.workers):
+                        _removeHelper(work)
                 if self.num_workers <= 0:
                     self.log.info(f'There are no more workers. No need for forced timeout')
                     break
