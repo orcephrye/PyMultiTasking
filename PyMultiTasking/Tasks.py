@@ -8,33 +8,29 @@ import traceback
 import inspect
 import uuid
 import time
+import multiprocessing
 from multiprocessing import RLock as MultiProcRLock
 from threading import RLock as ThreadRLock
 from threading import Semaphore as SemaphoreThreading
 from threading import Event as EventThreading
 from queue import PriorityQueue
-import multiprocessing
 from multiprocessing import Event, Semaphore
 from multiprocessing.queues import JoinableQueue
 from functools import partial
 from abc import abstractmethod, ABC
-from PyMultiTasking.PipeSynchronize import PipeRegister
 from typing import Optional, Callable, Any, Union
 
-
-# logging.basicConfig(format='%(asctime)s %(levelname)s %(name)s %(funcName)s %(lineno)s %(message)s',
-#                     level=logging.DEBUG)
-_log = logging.getLogger('MultiTaskingTools')
+from PyMultiTasking.PipeSynchronize import PipeRegister
+from PyMultiTasking.utils import dummy_func
 
 
-def dummy_func(*args, **kwargs):
-    return kwargs.get('_default', None)
+_log = logging.getLogger('PyMultiTasking.MultiTaskingTools')
 
 
 class Task(ABC):
 
     priority = 0
-    taskType = ''
+    task_type = ''
 
     def __init__(self, *args, **kwargs):
         pass
@@ -120,8 +116,8 @@ class ThreadTask(EventThreading, Task):
         It is designed to hold the function ran and save the results of the function.
     """
 
-    defaultpriority: int = 1
-    taskType = 'THREAD'
+    default_priority: int = 1
+    task_type = 'THREAD'
 
     def __init__(self, fn: Callable, priority: int = 1, kill: bool = False, inject_task: bool = True,
                  store_return: bool = True,  callback_func: Optional[Callable] = None,
@@ -261,7 +257,7 @@ class ProcessTask(Task):
     """
 
     defaultpriority: int = 1
-    taskType = 'PROCESS'
+    task_type = 'PROCESS'
 
     def __init__(self, fn: Callable, priority: int = 1, kill: bool = False, inject_task: bool = True,
                  store_return: bool = False, callback_func: Optional[Callable] = None,

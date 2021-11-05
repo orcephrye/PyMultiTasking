@@ -38,7 +38,7 @@ _async_raise(tid, exctype) -> None: <br />
     class of either ThreadWorker or ProcessWorker.
 
 [Pool](#Pool) <br />
-    This manages a pool of Workers and a queue of Tasks. The workers consume tasks from the taskQueue until they are
+    This manages a pool of Workers and a queue of Tasks. The workers consume tasks from the task_queue until they are
     told to stop. This is meant to be a super class and only used to be inherited. It is the super class of either
     ThreadPool or ProcessPool.
 
@@ -58,17 +58,13 @@ import inspect
 import ctypes
 from multiprocessing.synchronize import SemLock
 from contextlib import contextmanager
-from threading import Lock, RLock, Event, Semaphore
-from threading import Semaphore as SemaphoreThreading
+from threading import Lock, RLock, Event
 from multiprocessing.synchronize import Semaphore as SemephoreProcessing
 from functools import wraps
-from types import FunctionType
 from typing import Union, Optional, Iterator, Callable, Any, Type, Iterable
 
 
-# logging.basicConfig(format='%(asctime)s %(levelname)s %(name)s %(funcName)s %(lineno)s %(message)s',
-#                     level=logging.DEBUG)
-_log = logging.getLogger('MultiTaskingTools')
+_log = logging.getLogger('PyMultiTasking.MultiTaskingTools')
 
 
 def dummy_func(*args, **kwargs):
@@ -252,8 +248,8 @@ class MultiEvent(Event):
     """
 
     _counter: int = None
-    _counterMax: int = None
-    _ActionLock: Lock = None
+    _counter_max: int = None
+    _action_Lock: Lock = None
 
     def __init__(self, counter: int = 1):
         """ Constructor for the MultiEvent. This requires one parameter named 'counter'.
@@ -262,8 +258,8 @@ class MultiEvent(Event):
         """
 
         self._counter = counter
-        self._counterMax = counter
-        self._ActionLock = Lock()
+        self._counter_max = counter
+        self._action_Lock = Lock()
         super(MultiEvent, self).__init__()
 
     def set(self) -> None:
@@ -273,7 +269,7 @@ class MultiEvent(Event):
         - :return: None
         """
 
-        with self._ActionLock:
+        with self._action_Lock:
             self._counter -= 1
             if self._counter <= 0:
                 super(MultiEvent, self).set()
@@ -285,8 +281,8 @@ class MultiEvent(Event):
         :return: None
 
         """
-        with self._ActionLock:
-            self._counter = self._counterMax
+        with self._action_Lock:
+            self._counter = self._counter_max
             super(MultiEvent, self).clear()
 
     def remaining_sets(self) -> int:
@@ -295,12 +291,12 @@ class MultiEvent(Event):
         - :return: (int)
         """
 
-        with self._ActionLock:
+        with self._action_Lock:
             return self._counter
 
     @property
     def num_required_sets(self) -> int:
-        return self._counterMax
+        return self._counter_max
 
 
 class MultipleEvents(object):

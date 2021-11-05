@@ -9,18 +9,16 @@ import logging
 import threading
 from threading import RLock
 from PyMultiTasking.Tasks import ThreadTask, PriorityTaskQueue
-from PyMultiTasking.libs import Worker, Pool, __PyMultiDec
+from PyMultiTasking.libs import _Worker, _Pool, _PyMultiDec
 from PyMultiTasking.utils import wait_lock
 from PyMultiTasking.utils import __async_raise as a_raise
 
 
-# logging.basicConfig(format='%(asctime)s %(levelname)s %(name)s %(funcName)s %(lineno)s %(message)s',
-#                     level=logging.DEBUG)
-log = logging.getLogger('Threading')
+_log = logging.getLogger('PyMultiTasking.Threading')
 # logging.getLoggerClass().manager.emittedNoHandlerWarning = 1
 
 
-class ThreadWorker(Worker, threading.Thread):
+class ThreadWorker(_Worker, threading.Thread):
     """ <a name="ThreadWorker"></a>
         This is designed to be managed by a ThreadPool. However, it can run on its own as well. It runs until told to
         stop and works tasks that come from a the PriorityTaskQueue maintained by the Pool.
@@ -30,7 +28,7 @@ class ThreadWorker(Worker, threading.Thread):
     taskObj = ThreadTask
 
     def __init__(self, *args, **kwargs):
-        kwargs.update({'log': log})
+        kwargs.update({'log': _log})
         super(ThreadWorker, self).__init__(*args, **kwargs)
 
     def __get_my_tid(self) -> int:
@@ -66,10 +64,10 @@ class ThreadWorker(Worker, threading.Thread):
 
 
 # noinspection PyPep8Naming
-class ThreadPool(Pool):
+class ThreadPool(_Pool):
     """ <a name="ThreadPool"></a>
         This manages a pool of ThreadWorkers that get tasks from a 'PriorityTaskQueue'. The workers consume tasks from
-        the taskQueue until they are told to stop. The ThreadPool class keeps a registry of all ThreadPools objects.
+        the task_queue until they are told to stop. The ThreadPool class keeps a registry of all ThreadPools objects.
     """
 
     poolType = 'PROCESS'
@@ -80,7 +78,7 @@ class ThreadPool(Pool):
     __pool_registry = []
 
     def __init__(self, *args, **kwargs):
-        kwargs.update({'log': log})
+        kwargs.update({'log': _log})
         super(ThreadPool, self).__init__(*args, **kwargs)
         ThreadPool.register_pool(self)
 
@@ -114,11 +112,11 @@ class ThreadPool(Pool):
     @classmethod
     def register_pool(cls, pool, timeout=60):
         with wait_lock(cls.__regRLock, timeout=timeout, raise_exc=True):
-            if isinstance(pool, Pool):
+            if isinstance(pool, _Pool):
                 cls.__pool_registry.append(pool)
 
 
-class Threaded(__PyMultiDec):
+class Threaded(_PyMultiDec):
     """<a name="Threaded"></a>
         To be used as a Decorator. When decorating a function/method that callable when be run in a Python thread.
         The function will return a 'Task' object.

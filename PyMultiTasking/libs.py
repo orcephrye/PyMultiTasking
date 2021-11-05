@@ -8,21 +8,20 @@ import time
 import logging
 import traceback
 import uuid
-from queue import Empty, Queue
 import multiprocessing
+from queue import Empty, Queue
 from multiprocessing import Pipe
 from multiprocessing.synchronize import RLock
 from multiprocessing import RLock as MultiProcRLock
 from threading import RLock, Event
 from functools import partial, wraps
-from PyMultiTasking.Tasks import Task, PriorityTaskQueue, ProcessTaskQueue
-from PyMultiTasking.utils import wait_lock, dummy_func
 from typing import Union, Optional, Callable, Tuple, List
 
+from PyMultiTasking.Tasks import Task, PriorityTaskQueue, ProcessTaskQueue
+from PyMultiTasking.utils import wait_lock, dummy_func
 
-# logging.basicConfig(format='%(asctime)s %(levelname)s %(name)s %(funcName)s %(lineno)s %(message)s',
-#                     level=logging.DEBUG)
-_log = logging.getLogger('libs')
+
+_log = logging.getLogger('PyMultiTasking.libs')
 
 
 __STARTING__ = "__STARTING__"
@@ -47,7 +46,7 @@ def get_cpu_count() -> int:
 
 
 # noinspection PyUnresolvedReferences
-class __PyMultiDec:
+class _PyMultiDec:
 
     wType = type
     pType = type
@@ -68,7 +67,7 @@ class __PyMultiDec:
         if self.daemon is not None:
             if self.daemon is True:
                 self.personal_que = PriorityTaskQueue()
-                kwargs.update({'_worker_workerAutoKill': False, '_worker_personalQue': self.personal_que})
+                kwargs.update({'_worker_worker_auto_kill': False, '_worker_personal_que': self.personal_que})
                 self.worker = self.wType(**{k.replace('_worker_', ''): v
                                          for k, v in kwargs.items() if k.startswith('_worker_')})
             else:
@@ -77,7 +76,7 @@ class __PyMultiDec:
         elif self.pool is True or kwargs.get('pool_name', None) is not None:
             self.pool = self.pType.get_pool_by_name(name=kwargs.get('pool_name', None))
             if not self.pool:
-                kwargs.update({'_pool_workerAutoKill': False, '_pool_name': kwargs.get('pool_name', '')})
+                kwargs.update({'_pool_worker_auto_kill': False, '_pool_name': kwargs.get('pool_name', '')})
                 self.pool = self.pType(**{k.replace('_pool_', ''): v for k, v in kwargs.items()
                                                                      if k.startswith('_pool_')})
 
@@ -117,36 +116,36 @@ class __PyMultiDec:
 
 
 # noinspection PyUnresolvedReferences
-class Worker:
+class _Worker:
     """ <a name="WorkerThread"></a>
             This is designed to be managed by a ThreadPool. However, it can run on its own as well. It runs until told to
             stop and works tasks that come from a the PriorityTaskQueue maintained by the Pool.
         """
 
-    __workerAutoKill = True
-    __defaultTimeout = 10
+    __worker_auto_kill = True
+    __default_timeout = 10
     workerType = ''
     taskObj = Task
 
-    def __init__(self, pool: Optional[Pool] = None, workerAutoKill: bool = True, defaultTimeout: int = 10,
-                 personalQue: Optional[ProcessTaskQueue] = None, target: Optional[Callable] = None,
+    def __init__(self, pool: Optional[_Pool] = None, worker_auto_kill: bool = True, default_timeout: int = 10,
+                 personal_que: Optional[ProcessTaskQueue] = None, target: Optional[Callable] = None,
                  name: Optional[str] = None, daemon: bool = True, log: Optional[logging] = None,
                  communication_pipe: Optional[Pipe] = None, **kwargs):
         print(f'kwargs={kwargs}')
         if target is not None and not isinstance(target, Task):
             target = self.taskObj(target, kill=True)
         self.uuid = str(uuid.uuid4()) if name is None else name
-        super(Worker, self).__init__(target=target, name=self.uuid, daemon=daemon,
-                                     args=kwargs.get('args', ()), kwargs=kwargs.get('kwargs', {}))
+        super(_Worker, self).__init__(target=target, name=self.uuid, daemon=daemon,
+                                      args=kwargs.get('args', ()), kwargs=kwargs.get('kwargs', {}))
         self.log = _log if log is None else log
-        self.__defaultTimeout = defaultTimeout
-        self.__timeout = defaultTimeout
-        self.__personalQue = personalQue
-        self.__currentTask = None
+        self.__default_timeout = default_timeout
+        self.__timeout = default_timeout
+        self.__personal_que = personal_que
+        self.__current_task = None
         self.communication_pipe = communication_pipe
         self.pool = pool
         self.killed = False
-        self.__workerAutoKill = workerAutoKill if self.__personalQue is None else False
+        self.__worker_auto_kill = worker_auto_kill if self.__personal_que is None else False
         self.__ignore_queue = False
         if pool:
             self.log.info(f'[INFO]: Starting new {self}')
@@ -163,31 +162,31 @@ class Worker:
 
     # noinspection PyUnresolvedReferences
     def get_next_task(self) -> Union[Task, bool, None]:
-        """ This gets the next Task in the taskQueue
+        """ This gets the next Task in the task_queue
 
         - :return: (Task)
         """
 
         try:
-            self.__currentTask = None
+            self.__current_task = None
             if self.pool is None and self._target is not None:
-                self.__currentTask = self._target
-                self.__currentTask.set_original(False)
-                self.__currentTask.worker = self
-                self.__currentTask.kill = True
+                self.__current_task = self._target
+                self.__current_task.set_original(False)
+                self.__current_task.worker = self
+                self.__current_task.kill = True
                 self.__ignore_queue = True
-            elif self.pool is None and self.__personalQue is None:
-                self.__currentTask = None
+            elif self.pool is None and self.__personal_que is None:
+                self.__current_task = None
             else:
-                self.__currentTask = self.task_queue.get(timeout=self.__timeout)
-                self.log.debug(f'Got task {self.__currentTask} for worker: {self}')
-                self.__currentTask.set_original(False)
-                self.__currentTask.worker = self
-            return self.__currentTask
+                self.__current_task = self.task_queue.get(timeout=self.__timeout)
+                self.log.debug(f'Got task {self.__current_task} for worker: {self}')
+                self.__current_task.set_original(False)
+                self.__current_task.worker = self
+            return self.__current_task
         except Empty:
             if self.timeout == 0:
                 self.__ignore_queue = True
-                return self.taskObj(Worker.__KILL__, kill=True)
+                return self.taskObj(_Worker.__KILL__, kill=True)
             return False
         except Exception as e:
             self.log.error(f'[ERROR]: Error in getting task: {e}')
@@ -209,29 +208,29 @@ class Worker:
                 elif task is not False:
                     self.log.info(f'The task is: {task}')
                     task(*self._args, **self._kwargs)
-                    self.__currentTask = None
+                    self.__current_task = None
                     if not self.__ignore_queue:
                         self.task_queue.task_done()
                     if task.kill:
                         self.log.info(f'Killing thread once task is complete: {task}')
                         self.killed = True
         except Exception as e:
-            self.log.error(f'[ERROR]: While Worker thread is running with task: {self.__currentTask} Error: {e}')
+            self.log.error(f'[ERROR]: While Worker thread is running with task: {self.__current_task} Error: {e}')
             self.log.debug(f'[DEBUG]: trace for error: {traceback.format_exc()}')
-            if self.__currentTask is not None:
-                if not self.__currentTask.is_set():
-                    self.__currentTask.set()
+            if self.__current_task is not None:
+                if not self.__current_task.is_set():
+                    self.__current_task.set()
                     if not self.__ignore_queue:
                         getattr(self.task_queue, 'task_done', dummy_func)()
-                self.__currentTask = None
+                self.__current_task = None
         finally:
             if self.killed is not True:
                 self.killed = True
             if self.pool is not None and self.workerType == 'THREAD':
-                self.pool.remove_worker(workerTooRemove=self)
+                self.pool.remove_worker(worker_too_remove=self)
 
     def is_alive(self):
-        return super(Worker, self).is_alive()
+        return super(_Worker, self).is_alive()
 
     @staticmethod
     def __KILL__(*args, **kwargs) -> None:
@@ -239,9 +238,9 @@ class Worker:
 
     @property
     def task_queue(self):
-        if self.pool is None and self.__personalQue is not None:
-            return self.__personalQue
-        return getattr(getattr(self, 'pool', None), 'taskQueue', None)
+        if self.pool is None and self.__personal_que is not None:
+            return self.__personal_que
+        return getattr(getattr(self, 'pool', None), 'task_queue', None)
 
     @property
     def timeout(self) -> int:
@@ -249,11 +248,11 @@ class Worker:
         """
         if self.killed is True:
             return 0
-        elif self.pool is not None and ((self.__workerAutoKill and self.pool.num_workers > 1) or
-                                        self.pool.num_workers > self.pool.maxWorkers):
+        elif self.pool is not None and ((self.__worker_auto_kill and self.pool.num_workers > 1) or
+                                        self.pool.num_workers > self.pool.max_workers):
             self.__timeout //= 2
-        elif self.__defaultTimeout != self.__timeout:
-            self.__timeout = self.__defaultTimeout
+        elif self.__default_timeout != self.__timeout:
+            self.__timeout = self.__default_timeout
         return self.__timeout
 
     @property
@@ -261,8 +260,8 @@ class Worker:
         """ This changes to the priority of each incoming task. """
 
         try:
-            if self.__currentTask:
-                return self.__currentTask.priority
+            if self.__current_task:
+                return self.__current_task.priority
             return 0
         except Exception as e:
             self.log.error(f'ERROR: {e}')
@@ -271,13 +270,13 @@ class Worker:
     @property
     def is_active(self) -> bool:
         """ This determines if the Worker currently has a Task to work. """
-        return self.__currentTask is not None
+        return self.__current_task is not None
 
 
 # noinspection PyPep8Naming
-class Pool:
+class _Pool:
     """ <a name="ThreadPool"></a>
-        This manages a pool of Workers and a queue of Tasks. The workers consume tasks from the taskQueue until they
+        This manages a pool of Workers and a queue of Tasks. The workers consume tasks from the task_queue until they
         are told to stop.
     """
 
@@ -285,43 +284,43 @@ class Pool:
     __regRLock = None
     __pool_registry = None
     poolType = ''
-    workerObj = Worker
+    workerObj = _Worker
     taskObj = Task
     queueObj = Queue
 
-    def __init__(self, maxWorkers: Optional[int] = None, tasks: Optional[Queue] = None, daemon: bool = True,
-                 timeout: int = 60, workerAutoKill: bool = True, prepopulate: int = 0, name: str = "",
+    def __init__(self, max_workers: Optional[int] = None, tasks: Optional[Queue] = None, daemon: bool = True,
+                 timeout: int = 60, worker_auto_kill: bool = True, prepopulate: int = 0, name: str = "",
                  log: Optional[logging] = None, **kwargs):
         self._kwargs = kwargs
         self.log = _log if log is None else log
         self.uuid = str(uuid.uuid4())
         self.name = name if name else self.uuid
-        self.maxWorkers = maxWorkers or get_cpu_count()
+        self.max_workers = max_workers or get_cpu_count()
         self.__timeout = timeout
-        self.__workerAutoKill = workerAutoKill
-        self.__workerListLock = RLock() if getattr(self.workerObj, 'workerType', 'THREAD') == 'THREAD' else MultiProcRLock()
-        self.__workerList = None
-        self.__stateLock = RLock() if getattr(self.workerObj, 'workerType', 'THREAD') == 'THREAD' else MultiProcRLock()
-        self.__taskLock = RLock() if getattr(self.workerObj, 'workerType', 'THREAD') == 'THREAD' else MultiProcRLock()
-        self.taskQueue = tasks or self.queueObj()
+        self.__worker_auto_kill = worker_auto_kill
+        self.__worker_Lock = RLock() if getattr(self.workerObj, 'workerType', 'THREAD') == 'THREAD' else MultiProcRLock()
+        self.__workers = None
+        self.__state_Lock = RLock() if getattr(self.workerObj, 'workerType', 'THREAD') == 'THREAD' else MultiProcRLock()
+        self.__task_Lock = RLock() if getattr(self.workerObj, 'workerType', 'THREAD') == 'THREAD' else MultiProcRLock()
+        self.task_queue = tasks or self.queueObj()
         self.workers = []
         self.state = __STARTING__
         self.daemon = daemon
         self.ignoredTasks = []
 
         if prepopulate:
-            self.setup_workers(numOfWorkers=prepopulate, workerAutoKill=self.__workerAutoKill)
-        elif self.taskQueue.qsize() > 0:
-            self.setup_workers(numOfWorkers=self.taskQueue.qsize() if self.taskQueue.qsize() <= self.maxWorkers
-                                                                   else self.maxWorkers,
-                               workerAutoKill=not daemon)
+            self.setup_workers(num_workers=prepopulate, worker_auto_kill=self.__worker_auto_kill)
+        elif self.task_queue.qsize() > 0:
+            self.setup_workers(num_workers=self.task_queue.qsize() if self.task_queue.qsize() <= self.max_workers
+                                                                    else self.max_workers,
+                               worker_auto_kill=not daemon)
         if daemon is False:
             self.state = __ACTIVE__
             self.join(self.__timeout)
             self.shutdown(timeout=self.__timeout)
 
     def __enter__(self):
-        self.__taskLock.acquire()
+        self.__task_Lock.acquire()
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -331,7 +330,7 @@ class Pool:
                 self.shutdown(timeout=self.__timeout)
             else:
                 self.wait_completion(timeout=self.__timeout)
-            self.__taskLock.release()
+            self.__task_Lock.release()
         except Exception as e:
             self.log.error(f"ERROR in __exit__ of Pool: {e}")
             self.log.debug(f"[DEBUG] for __exit__ of Pool: {traceback.format_exc()}")
@@ -339,50 +338,50 @@ class Pool:
     def __str__(self):
         return f'Pool(UUID={self.uuid}, State={self._state})'
 
-    def setup_workers(self, numOfWorkers: int = 1, workerAutoKill: Optional[bool] = None,
+    def setup_workers(self, num_workers: int = 1, worker_auto_kill: Optional[bool] = None,
                       allow_restart: bool = False, **kwargs) -> bool:
         """ Generally only used by init. This setups Worker threads to be managed by the Pool.
 
-        - :param numOfWorkers: (int) Number workers setup. IF the number of workers is higher then the value of
-                'maxWorkers' then 'maxWorkers' is updated. The numOfWorkers is how many Workers the Pool has *not* now
+        - :param num_workers: (int) Number workers setup. IF the number of workers is higher then the value of
+                'max_workers' then 'max_workers' is updated. The num_workers is how many Workers the Pool has *not* now
                 many new Workers get added.
-        - :param workerAutoKill: (bool) This determines if the worker ends once their is no longer any work left in
-                the 'taskQueue'.
+        - :param worker_auto_kill: (bool) This determines if the worker ends once their is no longer any work left in
+                the 'task_queue'.
         - :return: (bool)
         """
 
         if self.state in (__STOPPING__, __STOPPED__) and allow_restart is False:
             return False
-        if numOfWorkers > self.maxWorkers:
-            self.set_max_workers(numOfWorkers)
-            numOfNewWorkers = (numOfWorkers - self.num_workers)
-        elif numOfWorkers > (self.maxWorkers - self.num_workers):
-            numOfNewWorkers = (self.maxWorkers - self.num_workers)
+        if num_workers > self.max_workers:
+            self.set_max_workers(num_workers)
+            numOfNewWorkers = (num_workers - self.num_workers)
+        elif num_workers > (self.max_workers - self.num_workers):
+            numOfNewWorkers = (self.max_workers - self.num_workers)
         else:
-            numOfNewWorkers = numOfWorkers
+            numOfNewWorkers = num_workers
         for _ in range(0, numOfNewWorkers):
-            self.add_worker(workerAutoKill=self.__workerAutoKill if workerAutoKill is None else workerAutoKill,
+            self.add_worker(worker_auto_kill=self.__worker_auto_kill if worker_auto_kill is None else worker_auto_kill,
                             allow_restart=allow_restart, **kwargs)
         return numOfNewWorkers > 0
 
-    def add_worker(self, workerAutoKill: Optional[bool] = None, allow_restart: bool = False, **kwargs) -> bool:
+    def add_worker(self, worker_auto_kill: Optional[bool] = None, allow_restart: bool = False, **kwargs) -> bool:
         """ Adds a single new worker too the Pool.
 
-        - :param workerAutoKill: (bool) This determines if the worker ends once their is no longer any work left in
+        - :param worker_auto_kill: (bool) This determines if the worker ends once their is no longer any work left in
         - :return: (bool)
         """
 
         self.log.debug(f"Attempting to add new worker!")
         if self.state in (__STOPPING__, __STOPPED__) and allow_restart is False:
             return False
-        if self.num_workers >= self.maxWorkers:
+        if self.num_workers >= self.max_workers:
             return False
-        self.workers.append(self.workerObj(self, workerAutoKill=self.__workerAutoKill if workerAutoKill is None
-                                                                                      else workerAutoKill, **kwargs))
+        self.workers.append(self.workerObj(self, worker_auto_kill=self.__worker_auto_kill if worker_auto_kill is None
+                                                                                      else worker_auto_kill, **kwargs))
         return True
 
     def get_worker(self, uuid=None):
-        with wait_lock(self.__workerListLock, self.__timeout):
+        with wait_lock(self.__worker_Lock, self.__timeout):
             if uuid is None:
                 for worker in self.workers:
                     if not worker.is_active:
@@ -392,7 +391,7 @@ class Pool:
                     if worker.uuid == uuid:
                         return worker
 
-    def remove_worker(self, workerTooRemove: Optional[Worker] = None, timeout: int = 30,
+    def remove_worker(self, worker_too_remove: Optional[_Worker] = None, timeout: int = 30,
                       allow_abandon: bool = False) -> bool:
         """ Removes a single new worker from the Pool. This can be called to remove the last Worker or you can
             specify a Worker to remove.
@@ -426,31 +425,31 @@ class Pool:
         try:
             if self.num_workers <= 0:
                 return False
-            if workerTooRemove is not None and _removeHelper(workerTooRemove):
+            if worker_too_remove is not None and _removeHelper(worker_too_remove):
                 return True
             e = Event()
-            if workerTooRemove is not None:
-                workerTooRemove.safe_stop()
-                if wait_helper(timeout, time.monotonic(), e, workerTooRemove):
+            if worker_too_remove is not None:
+                worker_too_remove.safe_stop()
+                if wait_helper(timeout, time.monotonic(), e, worker_too_remove):
                     if self.poolType == 'PROCESS':
-                        _removeHelper(workerTooRemove)
+                        _removeHelper(worker_too_remove)
                     return True
-                self.log.warning(f'[WARN]: worker({workerTooRemove}) needs to be terminated in order to be removed.')
-                getattr(workerTooRemove, 'terminate', dummy_func)()
-                if wait_helper(timeout, time.monotonic(), e, workerTooRemove):
+                self.log.warning(f'[WARN]: worker({worker_too_remove}) needs to be terminated in order to be removed.')
+                getattr(worker_too_remove, 'terminate', dummy_func)()
+                if wait_helper(timeout, time.monotonic(), e, worker_too_remove):
                     if self.poolType == 'PROCESS':
-                        _removeHelper(workerTooRemove)
+                        _removeHelper(worker_too_remove)
                     return True
                 if allow_abandon:
-                    self.log.warning(f'[WARN]: worker({workerTooRemove}) is being abandoned.')
-                    worker = _removeHelper(workerTooRemove)
+                    self.log.warning(f'[WARN]: worker({worker_too_remove}) is being abandoned.')
+                    worker = _removeHelper(worker_too_remove)
                     if worker.killed is not True:
                         worker.killed = True
                     return True
                 return False
             else:
                 current_num = self.num_workers
-                self.submit(self.taskObj(Worker.__KILL__, priority=self.highest_priority + 1, kill=True),
+                self.submit(self.taskObj(_Worker.__KILL__, priority=self.highest_priority + 1, kill=True),
                             submit_task_autospawn=False)
                 if timeout > 0:
                     current = start = time.monotonic()
@@ -469,22 +468,22 @@ class Pool:
             if self.num_workers == 0:
                 self.state = __INACTIVE__
 
-    def set_max_workers(self, maxWorkers: int) -> int:
+    def set_max_workers(self, max_workers: int) -> int:
         """ Set the maximum number of threads that will remain active. Return the maximum thread limit.
 
-        - :param maxWorkers: (int) Max thread limit
+        - :param max_workers: (int) Max thread limit
         - :return: (int)
         """
 
-        if type(maxWorkers) is int and maxWorkers > -1:
-            self.maxWorkers = maxWorkers
-        return self.maxWorkers
+        if type(max_workers) is int and max_workers > -1:
+            self.max_workers = max_workers
+        return self.max_workers
 
     def wait_completion(self, timeout: Union[int, float], delay: Union[int, float] = 0.1, block: bool = False) -> bool:
         """ This method waits until all Tasks in the PriorityTaskQueue is done. If the parameter block is True it will
             stop any new Task from being submitted while waiting.
 
-        - :param timeout: (int/float) How long to wait for all tasks in the 'taskQueue' to be finished.
+        - :param timeout: (int/float) How long to wait for all tasks in the 'task_queue' to be finished.
         - :param delay: (int/float) The amount of time to wait before checking again in seconds. Default 0.1.
         - :param block: (bool) This will stop new tasks from being submitted to the Queue until finished.
         - :return: (bool)
@@ -502,7 +501,7 @@ class Pool:
 
         if block:
             start = time.monotonic()
-            with wait_lock(self.__taskLock, timeout=timeout):
+            with wait_lock(self.__task_Lock, timeout=timeout):
                 return _wait_completion(max(0.1, (start + timeout) - time.monotonic()))
         return _wait_completion(timeout)
 
@@ -531,17 +530,17 @@ class Pool:
             return self.workers.pop(self.workers.index(wtr))
 
         def _clear_helper(task):
-            return task.task.func != Worker.__KILL__
+            return task.task.func != _Worker.__KILL__
 
         def _clear_shutdown_tasks():
             try:
                 tasks = []
-                while not self.taskQueue.empty():
-                    tasks.append(self.taskQueue.get())
-                    self.taskQueue.task_done()
+                while not self.task_queue.empty():
+                    tasks.append(self.task_queue.get())
+                    self.task_queue.task_done()
                 for task in filter(_clear_helper, tasks):
                     if self.has_workers:
-                        self.taskQueue.put_nowait(task)
+                        self.task_queue.put_nowait(task)
                     else:
                         self.ignoredTasks.append(task)
             except Exception as e:
@@ -566,7 +565,7 @@ class Pool:
             return self.num_workers == 0
 
         start_time = time.monotonic()
-        with wait_lock(self.__taskLock, timeout=timeout):
+        with wait_lock(self.__task_Lock, timeout=timeout):
             for x in range(0, self.num_workers):
                 self.remove_worker(timeout=0)
             current_time = time.monotonic()
@@ -597,7 +596,7 @@ class Pool:
         - :return: (bool)
         """
 
-        with wait_lock(self.__taskLock, timeout=timeout):
+        with wait_lock(self.__task_Lock, timeout=timeout):
             start_time = time.monotonic()
             self.wait_completion(timeout, block=True)
             return self.shutdown(timeout=int(max(timeout - (time.monotonic() - start_time), 1)))
@@ -620,10 +619,10 @@ class Pool:
             kwargs['submit_task_autospawn'] = True
 
         if chunksize == 0:
-            if len(params) <= self.maxWorkers:
+            if len(params) <= self.max_workers:
                 chunksize = 1
             else:
-                chunksize = round(len(params) / self.maxWorkers)
+                chunksize = round(len(params) / self.max_workers)
 
         def chunkHelper(func, chunkList):
             return [func(*parms[0], **parms[1]) for parms in chunkList]
@@ -666,7 +665,7 @@ class Pool:
         priority = kwargs.pop('submit_task_priority', 10) or 10
 
         start = time.monotonic()
-        with wait_lock(self.__taskLock, timeout=timeout):
+        with wait_lock(self.__task_Lock, timeout=timeout):
 
             if isinstance(fn, Task):
                 task = fn
@@ -675,9 +674,9 @@ class Pool:
 
             try:
                 if nowait:
-                    self.taskQueue.put_nowait(task)
+                    self.task_queue.put_nowait(task)
                 else:
-                    self.taskQueue.put(task, timeout=max(0.1, (start + timeout) - time.monotonic()))
+                    self.task_queue.put(task, timeout=max(0.1, (start + timeout) - time.monotonic()))
                 if autospawn or autospawn is None and self.needs_workers:
                     self.add_worker(**kwargs)
                 return task
@@ -720,12 +719,12 @@ class Pool:
         """ This calls the 'unfinishedTasks' property of PriorityTaskQueue. And is equal to the number of tasks
             submitted minus the number of times a Task has been Worked by a Worker.
         """
-        return self.taskQueue.unfinished_tasks
+        return self.task_queue.unfinished_tasks
 
     @property
     def num_queued_tasks(self) -> int:
         """ This is a wrapper for the 'qsize()' method from PriorityTaskQueue."""
-        return self.taskQueue.qsize()
+        return self.task_queue.qsize()
 
     @property
     def num_active_tasks(self) -> int:
@@ -752,7 +751,7 @@ class Pool:
 
     @property
     def needs_workers(self) -> bool:
-        if self.num_workers < self.maxWorkers:
+        if self.num_workers < self.max_workers:
             if self.num_queued_tasks > self.inactive_workers:
                 return True
         return False
@@ -780,24 +779,24 @@ class Pool:
     def workers(self) -> List:
         """+ This is a protected (wrapped in a lock) List of Workers managed by this pool. """
         try:
-            with wait_lock(self.__workerListLock, self.__timeout):
-                return self.__workerList
+            with wait_lock(self.__worker_Lock, self.__timeout):
+                return self.__workers
         except RuntimeError:
             pass
 
     @workers.setter
     def workers(self, value) -> None:
         try:
-            with wait_lock(self.__workerListLock, self.__timeout):
-                self.__workerList = value
+            with wait_lock(self.__worker_Lock, self.__timeout):
+                self.__workers = value
         except RuntimeError:
             pass
 
     @workers.deleter
     def workers(self) -> None:
         try:
-            with wait_lock(self.__workerListLock, self.__timeout):
-                self.__workerList = []
+            with wait_lock(self.__worker_Lock, self.__timeout):
+                self.__workers = []
         except RuntimeError:
             pass
 
@@ -805,7 +804,7 @@ class Pool:
     def state(self) -> str:
         """+ This is a string that has only 4 valid string values that determines the state of the Pool."""
         try:
-            with wait_lock(self.__stateLock, self.__timeout):
+            with wait_lock(self.__state_Lock, self.__timeout):
                 return self._state
         except RuntimeError:
             pass
@@ -813,7 +812,7 @@ class Pool:
     @state.setter
     def state(self, value) -> None:
         try:
-            with wait_lock(self.__stateLock, self.__timeout):
+            with wait_lock(self.__state_Lock, self.__timeout):
                 if value in __THREADPOOL_STATES__:
                     self._state = __THREADPOOL_STATES__[value]
                 else:
@@ -824,7 +823,7 @@ class Pool:
     @state.deleter
     def state(self) -> None:
         try:
-            with wait_lock(self.__stateLock, self.__timeout):
+            with wait_lock(self.__state_Lock, self.__timeout):
                 self._state = __INACTIVE__
         except RuntimeError:
             pass

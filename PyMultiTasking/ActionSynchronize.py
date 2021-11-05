@@ -2,23 +2,23 @@
 # -*- coding=utf-8 -*-
 
 from __future__ import annotations
+
 import logging
 import traceback
 import multiprocessing
+import threading
 from multiprocessing.queues import Queue
 from multiprocessing import RLock
-import threading
 from threading import Thread
 from functools import partial
+from typing import Union
+
 from PyMultiTasking.utils import dummy_func
 from PyMultiTasking.utils import __async_raise as a_raise
 from PyMultiTasking.ThreadingUtils import ThreadWorker
-from typing import Union
 
 
-# logging.basicConfig(format='%(asctime)s %(levelname)s %(name)s %(funcName)s %(lineno)s %(message)s',
-#                     level=logging.DEBUG)
-log = logging.getLogger('ActionSynchronize')
+_log = logging.getLogger('PyMultiTasking.ActionSynchronize')
 
 
 class Action:
@@ -54,53 +54,53 @@ class ActionQueue(Queue):
 class ActionRegister:
 
     def __init__(self):
-        self.__actionLock = RLock()
-        self.__actionReg = {}
+        self.__action_lock = RLock()
+        self.__action_reg = {}
 
     def register(self, target, target_name=None):
         if target_name is None:
             target_name = getattr(target, 'uuid', getattr(target, 'name', id(target)))
-        with self.__actionLock:
-            self.__actionReg.update({target_name: target})
+        with self.__action_lock:
+            self.__action_reg.update({target_name: target})
 
     def remove(self, target_name):
-        with self.__actionLock:
-            if target_name in self.__actionReg:
-                self.__actionReg.pop(target_name)
+        with self.__action_lock:
+            if target_name in self.__action_reg:
+                self.__action_reg.pop(target_name)
 
     def has_target(self, target_name):
-        with self.__actionLock:
-            return target_name in self.__actionReg
+        with self.__action_lock:
+            return target_name in self.__action_reg
 
     def get_target_by_action(self, action, _default=dummy_func):
-        with self.__actionLock:
+        with self.__action_lock:
             return self.get_target(action.target_name, action.target_action, _default=_default)
 
     def get_target(self, target_name, target_action, _default=dummy_func):
-        with self.__actionLock:
+        with self.__action_lock:
             if not self.has_target(target_name):
                 return _default
             if target_name == target_action:
-                return self.__actionReg.get(target_name)
+                return self.__action_reg.get(target_name)
             else:
-                return getattr(self.__actionReg.get(target_name), target_action, dummy_func)
+                return getattr(self.__action_reg.get(target_name), target_action, dummy_func)
 
     def call_target(self, target_name, target_action, *args, **kwargs):
-        with self.__actionLock:
+        with self.__action_lock:
             return self.get_target(target_name, target_action)(*args, **kwargs)
 
     def call_target_by_action(self, action):
-        with self.__actionLock:
+        with self.__action_lock:
             return self.get_target_by_action(action)(*action.args, **action.kwargs)
 
     def get_target_pipe(self, target_name):
-        with self.__actionLock:
+        with self.__action_lock:
             if not self.has_target(target_name):
                 return None
-            return getattr(self.__actionReg.get(target_name), '_action_pipe', None)
+            return getattr(self.__action_reg.get(target_name), '_action_pipe', None)
 
     def get_target_pipe_by_action(self, action):
-        with self.__actionLock:
+        with self.__action_lock:
             return self.get_target_pipe(action.target_name)
 
 
@@ -167,8 +167,8 @@ class ActionListener(Thread):
         try:
             return_pipe.send(data)
         except Exception as e:
-            log.error(f'Error in returning_func: {e}')
-            log.debug(f'[DEBUG]: trace for error in returning_func: {traceback.format_exc()}')
+            _log.error(f'Error in returning_func: {e}')
+            _log.debug(f'[DEBUG]: trace for error in returning_func: {traceback.format_exc()}')
 
     def run(self):
         while not self.killed:

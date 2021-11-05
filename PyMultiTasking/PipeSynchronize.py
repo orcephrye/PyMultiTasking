@@ -2,24 +2,23 @@
 # -*- coding=utf-8 -*-
 
 from __future__ import annotations
+
 import logging
 import traceback
 import uuid
+import threading
 from multiprocessing import Pipe
 from multiprocessing import RLock
-import threading
 
 
-# logging.basicConfig(format='%(asctime)s %(levelname)s %(name)s %(funcName)s %(lineno)s %(message)s',
-#                     level=logging.DEBUG)
-_log = logging.getLogger('PipeSynchronize')
+_log = logging.getLogger('PyMultiTasking.PipeSynchronize')
 
 
 class SafePipe:
 
-    def __init__(self, conn, _id):
+    def __init__(self, conn, pipe_id):
         self.conn = conn
-        self.pipe_id = _id
+        self.pipe_id = pipe_id
         self.__lock = threading.Lock()
 
     def __enter__(self):
@@ -63,15 +62,15 @@ def create_safepipe(conns=None, register=None):
         p_conn, c_conn = conns
     else:
         p_conn, c_conn = Pipe()
-    _id = str(uuid.uuid4())
+    pipe_id = str(uuid.uuid4())
     if isinstance(register, PipeRegister):
-        register.register(SafePipe(p_conn, _id), SafePipe(c_conn, _id), _id=_id)
-    return SafePipe(p_conn, _id), SafePipe(c_conn, _id)
+        register.register(SafePipe(p_conn, pipe_id), SafePipe(c_conn, pipe_id), pipe_id=pipe_id)
+    return SafePipe(p_conn, pipe_id), SafePipe(c_conn, pipe_id)
 
 
 class PipeRegister:
 
-    __regRLock = RLock()
+    __reg_RLock = RLock()
     __pipe_registry = []
 
     def __init__(self, *args, **kwargs):
@@ -85,31 +84,31 @@ class PipeRegister:
         if self.has_pipe(pipe_id):
             raise Exception(f'[create_safepipe] Pipe ID {pipe_id} already exists in registery!')
         p_conn, c_conn = Pipe()
-        self.register(SafePipe(p_conn, pipe_id), SafePipe(c_conn, pipe_id), _id=pipe_id)
+        self.register(SafePipe(p_conn, pipe_id), SafePipe(c_conn, pipe_id), pipe_id=pipe_id)
         return self.get_pipes(pipe_id)
 
-    def register(self, p_conn, c_conn, _id=None):
+    def register(self, p_conn, c_conn, pipe_id=None):
         with self.__rlock:
             if type(p_conn) != type(c_conn):
                 raise Exception(f'Parent connection and Child connection are of two different types')
             if not isinstance(p_conn, SafePipe):
-                _id = _id if _id is not None else str(uuid.uuid4())
-                p_conn = SafePipe(p_conn, _id)
-                c_conn = SafePipe(c_conn, _id)
-            if self.has_pipe(_id):
-                raise Exception(f'[register] Pipe ID {_id} already exists in registery!')
+                pipe_id = pipe_id if pipe_id is not None else str(uuid.uuid4())
+                p_conn = SafePipe(p_conn, pipe_id)
+                c_conn = SafePipe(c_conn, pipe_id)
+            if self.has_pipe(pipe_id):
+                raise Exception(f'[register] Pipe ID {pipe_id} already exists in registery!')
             self.__pipe_reg.update({p_conn.pipe_id: (p_conn, c_conn)})
             return p_conn.pipe_id
 
     # noinspection PyUnresolvedReferences
     def shutdown_pipe(self, pipe_id):
-        p_pipe, c_pipe = self.remove(pipe_id)
-        if p_pipe is None:
+        p_conn, c_conn = self.remove(pipe_id)
+        if p_conn is None:
             return False
-        PipeRegister.flush_pipe(p_pipe)
-        PipeRegister.flush_pipe(c_pipe)
-        p_pipe.close()
-        c_pipe.close()
+        PipeRegister.flush_pipe(p_conn)
+        PipeRegister.flush_pipe(c_conn)
+        p_conn.close()
+        c_conn.close()
 
     def get_all_pipes(self):
         with self.__rlock:
@@ -182,7 +181,7 @@ class PipeRegister:
 
     @classmethod
     def get_pipereg_by_name(cls, name, automake=False):
-        with cls.__regRLock:
+        with cls.__reg_RLock:
             for pipereg in cls.__pipe_registry:
                 if name == pipereg.name:
                     return pipereg
@@ -191,13 +190,13 @@ class PipeRegister:
 
     @classmethod
     def get_pipereg(cls, name=None):
-        with cls.__regRLock:
+        with cls.__reg_RLock:
             if name:
                 return [pool for pool in cls.__pipe_registry if name == pool.name]
             return cls.__pipe_registry
 
     @classmethod
     def register_pipereg(cls, pipereg):
-        with cls.__regRLock:
+        with cls.__reg_RLock:
             if isinstance(pipereg, PipeRegister):
                 cls.__pipe_registry.append(pipereg)

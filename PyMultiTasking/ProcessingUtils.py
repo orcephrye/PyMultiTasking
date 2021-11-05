@@ -8,24 +8,20 @@
 from __future__ import annotations
 
 import logging
-import traceback
 import multiprocessing
 import math
-import time
 import uuid
 from functools import partial
 from threading import Event
 from multiprocessing import RLock, Process
+
 from PyMultiTasking.Tasks import ProcessTask, ProcessTaskQueue
-from PyMultiTasking.libs import Worker, Pool, __PyMultiDec, get_cpu_count, __INACTIVE__, __STOPPING__, __STOPPED__
+from PyMultiTasking.libs import _Worker, _Pool, _PyMultiDec, get_cpu_count
 from PyMultiTasking.utils import wait_lock, dummy_func
 from PyMultiTasking.PipeSynchronize import PipeRegister
-from typing import Optional
 
 
-# logging.basicConfig(format='%(asctime)s %(levelname)s %(name)s %(funcName)s %(lineno)s %(message)s',
-#                     level=logging.DEBUG)
-log = logging.getLogger('Processing')
+_log = logging.getLogger('PyMultiTasking.Processing')
 # logging.getLoggerClass().manager.emittedNoHandlerWarning = 1
 
 
@@ -44,7 +40,7 @@ def set_start_method(method=None, force=False):
             return True
 
 
-class ProcessWorker(Worker, Process):
+class ProcessWorker(_Worker, Process):
     """ <a name="ProcessWorker"></a>
         This is designed to be managed by a ProcessPool. However, it can run on its own as well. It runs until told to
         stop and works tasks that come from a the ProcessTaskQueue maintained by the ProcessPool.
@@ -54,15 +50,15 @@ class ProcessWorker(Worker, Process):
     taskObj = ProcessTask
 
     def __init__(self, *args, **kwargs):
-        kwargs.update({'log': log})
+        kwargs.update({'log': _log})
         super(ProcessWorker, self).__init__(*args, **kwargs)
 
 
 # noinspection PyPep8Naming
-class ProcessPool(Pool):
+class ProcessPool(_Pool):
     """ <a name="ProcessPool"></a>
         This manages a pool of ProcessWorkers that get tasks from a 'ProcessTaskQueue'. The workers consume tasks from
-        the taskQueue until they are told to stop. The ProcessPool class keeps a registry of all ProcessPool objects.
+        the task_queue until they are told to stop. The ProcessPool class keeps a registry of all ProcessPool objects.
     """
 
     poolType = 'PROCESS'
@@ -73,12 +69,12 @@ class ProcessPool(Pool):
     __pool_registry = []
 
     def __init__(self, *args, **kwargs):
-        self.__waitingEvent = Event()
-        kwargs.update({'log': log, 'tasks': ProcessTaskQueue()})
-        if 'maxWorkers' not in kwargs:
-            kwargs.update({'maxWorkers': math.ceil(get_cpu_count() / 2)})
-        if 'workerAutoKill' not in kwargs:
-            kwargs.update({'workerAutoKill': False})
+        self.__waiting_event = Event()
+        kwargs.update({'log': _log, 'tasks': ProcessTaskQueue()})
+        if 'max_workers' not in kwargs:
+            kwargs.update({'max_workers': math.ceil(get_cpu_count() / 2)})
+        if 'worker_auto_kill' not in kwargs:
+            kwargs.update({'worker_auto_kill': False})
         self.comms_pipes = kwargs.get('comms_pipes', True)
         kwargs.update({'name': kwargs.pop('name', str(uuid.uuid4()))})
         if self.comms_pipes:
@@ -87,7 +83,7 @@ class ProcessPool(Pool):
         ProcessPool.register_pool(self)
 
     def add_worker(self, *args, **kwargs) -> bool:
-        self.__waitingEvent.wait(timeout=0.1)
+        self.__waiting_event.wait(timeout=0.1)
         if self.comms_pipes and self.pipereg:
             kwargs.update({'name': kwargs.pop('name', str(uuid.uuid4()))})
             _, child_conn = self.pipereg.create_safepipe(kwargs.get('name', '')+'_worker')
@@ -99,7 +95,7 @@ class ProcessPool(Pool):
         """ This calls the 'unfinishedTasks' property of PriorityTaskQueue. And is equal to the number of tasks
             submitted minus the number of times a Task has been Worked by a Worker.
         """
-        return getattr(getattr(self.taskQueue, '_unfinished_tasks', None),
+        return getattr(getattr(self.task_queue, '_unfinished_tasks', None),
                        'get_value', partial(dummy_func, _default=0))()
 
     @classmethod
@@ -132,11 +128,11 @@ class ProcessPool(Pool):
     @classmethod
     def register_pool(cls, pool, timeout=60):
         with wait_lock(cls.__regRLock, timeout=timeout, raise_exc=True):
-            if isinstance(pool, Pool):
+            if isinstance(pool, _Pool):
                 cls.__pool_registry.append(pool)
 
 
-class Processed(__PyMultiDec):
+class Processed(_PyMultiDec):
     """<a name="Processed"></a>
         To be used as a Decorator. When decorating a function/method that callable when be run in a Python Process.
         The function will return a 'Task' object.
