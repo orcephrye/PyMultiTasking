@@ -1,2 +1,3 @@
 [tool.portray]
-modules = ["PyThreadingPool"]
+output_dir = "docs"
+modules = ["PyMultiTasking"]

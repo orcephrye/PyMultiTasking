@@ -1,4 +1,10 @@
-# Threading Tools
+Threading Tools
+===============
+
+
+----
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://choosealicense.com/licenses/gpl-3.0/)
+[![Docs](https://readthedocs.org/projects/ansicolortags/badge/?version=latest)](https://orcephrye.github.io/PyMultiTasking/)
 
 A set of tools for making threading in Python 3 easy. 
 
