@@ -14,17 +14,19 @@ A set of tools for achieving concurrency in Python 3 easily.
 
 This follows the paradigm of **Worker/Pool/Task/Decorator** for both Threading and Multi-Process (future update). 
 
-* **Worker**: A worker (current version ThreadWorker) inherits from  threading.Thread. It adds extra support too easily
-kill or otherwise stop the thread. It can also can handle its own queue so it can keep receiving more functions to execute.
+* **Worker**: A ThreadWorker inherits from  threading.Thread. It has additional parameters that extend is functionality. 
+Examples includes adding extra support too easily kill or otherwise stop the thread, a queue so it can keep receiving 
+more functions to execute and so on.
 
-* **Pool**: Manages multiple worker Threads or Processes depending on if it is a ThreadPool or ProcessPool. Pools use a
-PriorityQueue to send Tasks into a given number of Threads/Processes. It can attempt to spin up and down the number of 
-necessary Workers depending on the number of tasks and the number of CPU Cores on the machine. A programmer can adjust 
-the number of workers in a pool as well. The Pool also provides helpful properties.
+* **Pool**: Manages multiple Workers. Pools use a PriorityQueue to send Tasks into a given number of Threads/Processes. 
+It can attempt to spin up and down the number of necessary Workers depending on the number of tasks and the number of 
+CPU Cores on the machine. A programmer can adjust the number of workers in a pool as well. The Pool provides many 
+additional methods, properties, functionality that is helpful when dealing with large amounts of threads.
 
 * **Task**: A Task object inherits from threading.Event and thus can be waited on. The event is set when the Task is 
 complete. The Task can also sync with other events via a Semaphore. It saves the results of a given function, it can
-handle a call back function, it can inject itself into given functions whenever possible, and it is serializable.
+handle a call back function, it can inject itself into given functions whenever possible, and it is serializable, and
+much more.
 
 * **Decorator**: This toolkit comes with 3 Decorators for threading. 'Limiter', 'Threaded', and 'Processed' 
 (future update). Limiter works to limit how many times a function/method can be run simultaneously. While Threaded is a
@@ -56,8 +58,9 @@ p1 = Pool()
 task = p1.submit(test, "arg", example="kwargs")
 ```
 
-When you execute a function that has been wrapped by threaded you get a task back. You can wait on the task as it is
-an Event object which also stores results.
+Submit returns a Task object. Task stores results and is also an Event object. Below example also shows the
+'submit_task_priority' priority keyword can provide the priority that the task should be treated when it is put into
+the TaskQueue. 
 ```python
 from PyMultiTasking import ThreadPool as Pool
 p1 = Pool()
@@ -117,8 +120,8 @@ for task in Pool.as_completed(tasks):
 ### Decorator Examples
 
 ---
-Currently there is only the 'Threaded' decorator for multitasking. However, future releases will have the Processed 
-decorator and its will have all the same features.
+Currently, there is only the 'Threaded' decorator for multitasking. However, future releases will have the Processed 
+decorator and will have all the same features.
 
 You can make any function or method threaded by simply using the decorator. Each time the 'test' method is called 
 it will now respond with a Task object and a Worker will be spawned to execute the function code block.
@@ -128,6 +131,12 @@ from PyMultiTasking import Threaded
 @Threaded
 def test(*args, **kwargs):
     print(f'{args} - {kwargs}')
+
+task = test()
+if task.wait(10):
+    print(task.results)
+else:
+    print(f"{task} not finished")
 ```
 
 Threaded also has the 'daemon' parameter. This spawns a single Worker thread and keeps it alive instead of ending it 
@@ -158,10 +167,10 @@ Pool.join_pools(timeout=60) # This will find all Pools and run 'join' on them.
 Threaded can also use the 'pool_name' keyword. This by default makes 'pool' keyword be True and will spawn a new Pool
 with the name provided if one doesn't already exist in the Pool registry. This is useful if the developer wants to 
 use a Pool across multiple functions and/or want to join/block/wait on the Pool and thus all associated functions.
-
 ```python
 from PyMultiTasking import Threaded, ThreadPool as Pool
-pool_name = 'mypool' # Global varaible
+pool_name = 'mypool' # Global variable
+
 
 @Threaded(pool_name=pool_name)
 def test_dec_pool_by_name_one(*args, **kwargs):
@@ -172,6 +181,7 @@ def test_dec_pool_by_name_one(*args, **kwargs):
 def test_dec_pool_by_name_twp(*args, **kwargs):
     print(f"Running: test_dec_pool_by_name_twp - args={args} - kwargs={kwargs}")
 
+    
 tasksOne = [test_dec_pool_by_name_one(randomsleep=True) for _ in range(4)]
 tasksTwo = [test_dec_pool_by_name_twp(randomsleep=True) for _ in range(4)]
 
@@ -196,19 +206,37 @@ def test(*args, **kwargs):
     print(f'{args} - {kwargs}')
 ```
 
-Threaded can also pass parameters directly to the Task/Worker/Pool. Lets combine some of the above things together now.
-It can submit information to a Task with '_task_<keyword>' and to a worker following the same schema '_worker_<keyword>'
-and again the same for pool ie: '_pool_<keyword>'
-```python
-from PyMultiTasking import Threaded
+Threaded can also pass parameters directly to the Task/Worker/Pool. It can submit information to a Task with 
+'_task_<keyword>' and to a worker following the same schema '_worker_<keyword>' and again the same for pool 
+ie: '_pool_<keyword>'
 
+Let's combine some of the above things together now. 
+```python
+from random import randint
+from PyMultiTasking import Limiter, Threaded, ThreadPool as Pool
+store_values = [] # Global variable used because the task isn't going to store the results.
+
+# Learn about the Limiter in the following section.
+@Limiter(1) # Because of the limiter the store_values object will not be appended to more than one at a time.
 def callback_test(*args, **kwargs):
+    # This will receive the return value of each 'test' method call.
+    global store_values
     print(f'callback_test - Completed: {args} - {kwargs}')
-    return args[0]
+    store_values.append(args)
+    
 
 @Threaded(callback_func=callback_test, pool_name='mypool', _pool_maxWorkers=2, _task_store_return=False)
 def test(*args, **kwargs):
     print(f'{args} - {kwargs}')
+    return randint(0, 10) # Return a random number from 0 to 10.
+    
+
+tasks = [test() for _ in range(4)]
+
+pool = Pool.get_pool_by_name('mypool') # Get the Pool associated with the two above functions.
+pool.join(block=True) # Ends the Pool.
+
+print(f"Stored Values: {store_values}")
 ```
 
 ### The Limiter 
@@ -234,10 +262,10 @@ a semephore onto the function as an argument '_task_semaphore'. This assumes tha
 like Threaded but this is not necessary as long as the wrapped function is able to handle the '_task_semaphore' 
 parameter. 
 
-The following example will not block the calling of the function even if it is called more than twice. If this was 
-called 4 times in a loop all 4 calls would execute quickly and return Tasks and have spawned 4 Workers. However, two
-of the Workers would be waiting for a lock. Once any one of the active Workers completes the Task and releases the lock
-another Worker can then execute their task.
+The following example will not block the calling of the function even if it is called more than twice. In the example
+below it is called 4 times in a loop. All 4 calls would execute quickly and return Tasks and have spawned 4 Workers. 
+However, two of the Workers would be waiting for a lock. Once any one of the active Workers completes the Task and 
+releases the lock another Worker can then execute their task.
 ```python
 from PyMultiTasking import Limiter, Threaded, ThreadPool as Pool
 
@@ -252,5 +280,5 @@ for task in Pool.as_completed(tasks):
     print(f"Task[{task}] completed with results: {task.results}")
 ```
 
-* NOTE: Doesn't use a Limiter if it is wrapping Threaded(daemon=True). Although this technically would not break
+* NOTE: Do not use a Limiter if it is wrapping Threaded(daemon=True). Although this technically would not break
 anything it is pointless.
