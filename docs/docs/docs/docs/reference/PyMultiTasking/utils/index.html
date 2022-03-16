@@ -2523,7 +2523,11 @@ managed in a Pool. The Pool uses a PriorityTaskQueue a custom class that inherit
 <span class="normal">2134</span>
 <span class="normal">2135</span>
 <span class="normal">2136</span>
-<span class="normal">2137</span></pre></div></td><td class="code"><div class="codehilite"><pre><span></span><code><span class="ch">#!/usr/bin/env python3</span>
+<span class="normal">2137</span>
+<span class="normal">2138</span>
+<span class="normal">2139</span>
+<span class="normal">2140</span>
+<span class="normal">2141</span></pre></div></td><td class="code"><div class="codehilite"><pre><span></span><code><span class="ch">#!/usr/bin/env python3</span>
 
 <span class="c1"># -*- coding=utf-8 -*-</span>
 
@@ -2925,7 +2929,7 @@ managed in a Pool. The Pool uses a PriorityTaskQueue a custom class that inherit
 
 <span class="c1"># noinspection PyPep8Naming</span>
 
-<span class="k">def</span> <span class="nf">Limiter</span><span class="p">(</span><span class="n">num</span><span class="p">,</span> <span class="n">blocking</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+<span class="k">def</span> <span class="nf">Limiter</span><span class="p">(</span><span class="n">num</span><span class="p">,</span> <span class="n">call_only</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
 
     <span class="sd">&quot;&quot;&quot; This is a decorator designed to decorate Threaded and Proccessed decorators to limit the number of</span>
 
@@ -2941,7 +2945,7 @@ managed in a Pool. The Pool uses a PriorityTaskQueue a custom class that inherit
 
         <span class="k">def</span> <span class="nf">wrapped</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
 
-            <span class="k">if</span> <span class="n">blocking</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">call_only</span><span class="p">:</span>
 
                 <span class="k">with</span> <span class="n">sem</span><span class="p">:</span>
 
@@ -3021,7 +3025,7 @@ managed in a Pool. The Pool uses a PriorityTaskQueue a custom class that inherit
 
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
 
-        <span class="n">_log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;making Class Dec: args=</span><span class="si">{</span><span class="n">args</span><span class="si">}</span><span class="s1"> - kwargs=</span><span class="si">{</span><span class="n">kwargs</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;making Class Dec: args=</span><span class="si">{</span><span class="n">args</span><span class="si">}</span><span class="s1"> - kwargs=</span><span class="si">{</span><span class="n">kwargs</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
 
         <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">args</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span> <span class="ow">and</span> <span class="n">callable</span><span class="p">(</span><span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
 
@@ -3075,13 +3079,13 @@ managed in a Pool. The Pool uses a PriorityTaskQueue a custom class that inherit
 
     <span class="k">def</span> <span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
 
-        <span class="n">_log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;calling test_dec: args=</span><span class="si">{</span><span class="n">args</span><span class="si">}</span><span class="s1"> - kwargs=</span><span class="si">{</span><span class="n">kwargs</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;calling test_dec: args=</span><span class="si">{</span><span class="n">args</span><span class="si">}</span><span class="s1"> - kwargs=</span><span class="si">{</span><span class="n">kwargs</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
 
         <span class="nd">@wraps</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">func</span><span class="p">)</span>
 
         <span class="k">def</span> <span class="nf">wrapper</span><span class="p">(</span><span class="o">*</span><span class="n">a</span><span class="p">,</span> <span class="o">**</span><span class="n">kw</span><span class="p">):</span>
 
-            <span class="n">_log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Within wrapper: args=</span><span class="si">{</span><span class="n">a</span><span class="si">}</span><span class="s1"> - kwargs=</span><span class="si">{</span><span class="n">kw</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Within wrapper: args=</span><span class="si">{</span><span class="n">a</span><span class="si">}</span><span class="s1"> - kwargs=</span><span class="si">{</span><span class="n">kw</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
 
             <span class="n">kw</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="n">k</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;_task_&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">):</span> <span class="n">v</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="n">k</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;_task_&#39;</span><span class="p">)})</span>
 
@@ -3353,7 +3357,7 @@ managed in a Pool. The Pool uses a PriorityTaskQueue a custom class that inherit
 
 <span class="k">class</span> <span class="nc">Worker</span><span class="p">:</span>
 
-    <span class="sd">&quot;&quot;&quot; &lt;a name=&quot;Worker&quot;&gt;&lt;/a&gt;</span>
+    <span class="sd">&quot;&quot;&quot; &lt;a name=&quot;WorkerThread&quot;&gt;&lt;/a&gt;</span>
 
 <span class="sd">            This is designed to be managed by a ThreadPool. However, it can run on its own as well. It runs until told to</span>
 
@@ -4233,25 +4237,29 @@ managed in a Pool. The Pool uses a PriorityTaskQueue a custom class that inherit
 
     <span class="k">def</span> <span class="nf">as_completed</span><span class="p">(</span><span class="n">tasks</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Task</span><span class="p">]):</span>
 
+        <span class="k">def</span> <span class="nf">_unfinished_tasks</span><span class="p">(</span><span class="n">task_item</span><span class="p">):</span>
+
+            <span class="k">return</span> <span class="kc">None</span> <span class="k">if</span> <span class="n">task_item</span><span class="o">.</span><span class="n">is_set</span><span class="p">()</span> <span class="k">else</span> <span class="n">task_item</span>
+
         <span class="k">def</span> <span class="nf">_finished_tasks</span><span class="p">(</span><span class="n">task_item</span><span class="p">):</span>
 
             <span class="k">return</span> <span class="n">task_item</span> <span class="k">if</span> <span class="n">task_item</span><span class="o">.</span><span class="n">is_set</span><span class="p">()</span> <span class="k">else</span> <span class="kc">None</span>
 
-        <span class="n">lengthOfTasks</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">tasks</span><span class="p">)</span>
+        <span class="k">def</span> <span class="nf">_continue_loop</span><span class="p">():</span>
+
+            <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="nb">filter</span><span class="p">(</span><span class="n">_unfinished_tasks</span><span class="p">,</span> <span class="n">tasks</span><span class="p">)))</span> <span class="o">&gt;</span> <span class="mi">0</span>
 
         <span class="n">finished_tasks</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
 
-        <span class="k">while</span> <span class="nb">len</span><span class="p">(</span><span class="n">finished_tasks</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">lengthOfTasks</span><span class="p">:</span>
+        <span class="k">while</span> <span class="n">_continue_loop</span><span class="p">():</span>
 
-            <span class="k">for</span> <span class="n">task</span> <span class="ow">in</span> <span class="nb">filter</span><span class="p">(</span><span class="n">_finished_tasks</span><span class="p">,</span> <span class="n">tasks</span><span class="p">):</span>
+            <span class="n">tmp_finished</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="nb">filter</span><span class="p">(</span><span class="n">_finished_tasks</span><span class="p">,</span> <span class="n">tasks</span><span class="p">))</span>
 
-                <span class="k">if</span> <span class="n">task</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">finished_tasks</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">tmp_finished</span><span class="o">.</span><span class="n">difference</span><span class="p">(</span><span class="n">finished_tasks</span><span class="p">):</span>
 
-                    <span class="n">finished_tasks</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">task</span><span class="p">)</span>
+                <span class="k">yield</span> <span class="n">item</span>
 
-                    <span class="k">yield</span> <span class="n">task</span>
-
-            <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.01</span><span class="p">)</span>
+            <span class="n">finished_tasks</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">tmp_finished</span><span class="p">)</span>
 
     <span class="nd">@property</span>
 
@@ -4667,13 +4675,13 @@ managed in a Pool. The Pool uses a PriorityTaskQueue a custom class that inherit
 <h3 id="limiter">Limiter</h3>
 <div class="codehilite"><pre><span></span><code><span class="k">def</span> <span class="nf">Limiter</span><span class="p">(</span>
     <span class="n">num</span><span class="p">,</span>
-    <span class="n">blocking</span><span class="o">=</span><span class="kc">True</span>
+    <span class="n">call_only</span><span class="o">=</span><span class="kc">False</span>
 <span class="p">)</span>
 </code></pre></div>
 
 <p>This is a decorator designed to decorate Threaded and Proccessed decorators to limit the number of</p>
 <p>simultaneous calls.</p>
-<details class="example"><summary>View Source</summary><div class="codehilite"><pre><span></span><code><span class="n">def</span><span class="w"> </span><span class="n">Limiter</span><span class="p">(</span><span class="n">num</span><span class="p">,</span><span class="w"> </span><span class="n">blocking</span><span class="o">=</span><span class="k">True</span><span class="p">)</span><span class="err">:</span><span class="w"></span>
+<details class="example"><summary>View Source</summary><div class="codehilite"><pre><span></span><code><span class="n">def</span><span class="w"> </span><span class="n">Limiter</span><span class="p">(</span><span class="n">num</span><span class="p">,</span><span class="w"> </span><span class="n">call_only</span><span class="o">=</span><span class="k">False</span><span class="p">)</span><span class="err">:</span><span class="w"></span>
 
 <span class="w">    </span><span class="ss">&quot;&quot;&quot; This is a decorator designed to decorate Threaded and Proccessed decorators to limit the number of</span>
 
@@ -4689,7 +4697,7 @@ managed in a Pool. The Pool uses a PriorityTaskQueue a custom class that inherit
 
 <span class="w">        </span><span class="n">def</span><span class="w"> </span><span class="n">wrapped</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span><span class="w"> </span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span><span class="err">:</span><span class="w"></span>
 
-<span class="w">            </span><span class="k">if</span><span class="w"> </span><span class="nl">blocking</span><span class="p">:</span><span class="w"></span>
+<span class="w">            </span><span class="k">if</span><span class="w"> </span><span class="nl">call_only</span><span class="p">:</span><span class="w"></span>
 
 <span class="w">                </span><span class="k">with</span><span class="w"> </span><span class="nl">sem</span><span class="p">:</span><span class="w"></span>
 
@@ -6315,25 +6323,29 @@ True except if a timeout is given and the operation times out.</p>
 
 <span class="w">    </span><span class="n">def</span><span class="w"> </span><span class="n">as_completed</span><span class="p">(</span><span class="n">tasks</span><span class="p">:</span><span class="w"> </span><span class="n">List</span><span class="p">[</span><span class="n">Task</span><span class="p">]):</span><span class="w"></span>
 
+<span class="w">        </span><span class="n">def</span><span class="w"> </span><span class="n">_unfinished_tasks</span><span class="p">(</span><span class="n">task_item</span><span class="p">):</span><span class="w"></span>
+
+<span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="n">None</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="n">task_item</span><span class="o">.</span><span class="n">is_set</span><span class="p">()</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="n">task_item</span><span class="w"></span>
+
 <span class="w">        </span><span class="n">def</span><span class="w"> </span><span class="n">_finished_tasks</span><span class="p">(</span><span class="n">task_item</span><span class="p">):</span><span class="w"></span>
 
 <span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="n">task_item</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="n">task_item</span><span class="o">.</span><span class="n">is_set</span><span class="p">()</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="n">None</span><span class="w"></span>
 
-<span class="w">        </span><span class="n">lengthOfTasks</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">len</span><span class="p">(</span><span class="n">tasks</span><span class="p">)</span><span class="w"></span>
+<span class="w">        </span><span class="n">def</span><span class="w"> </span><span class="n">_continue_loop</span><span class="p">():</span><span class="w"></span>
+
+<span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="n">len</span><span class="p">(</span><span class="n">list</span><span class="p">(</span><span class="n">filter</span><span class="p">(</span><span class="n">_unfinished_tasks</span><span class="p">,</span><span class="w"> </span><span class="n">tasks</span><span class="p">)))</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mi">0</span><span class="w"></span>
 
 <span class="w">        </span><span class="n">finished_tasks</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">set</span><span class="p">()</span><span class="w"></span>
 
-<span class="w">        </span><span class="k">while</span><span class="w"> </span><span class="n">len</span><span class="p">(</span><span class="n">finished_tasks</span><span class="p">)</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">lengthOfTasks</span><span class="p">:</span><span class="w"></span>
+<span class="w">        </span><span class="k">while</span><span class="w"> </span><span class="n">_continue_loop</span><span class="p">():</span><span class="w"></span>
 
-<span class="w">            </span><span class="k">for</span><span class="w"> </span><span class="n">task</span><span class="w"> </span><span class="ow">in</span><span class="w"> </span><span class="n">filter</span><span class="p">(</span><span class="n">_finished_tasks</span><span class="p">,</span><span class="w"> </span><span class="n">tasks</span><span class="p">):</span><span class="w"></span>
+<span class="w">            </span><span class="n">tmp_finished</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">set</span><span class="p">(</span><span class="n">filter</span><span class="p">(</span><span class="n">_finished_tasks</span><span class="p">,</span><span class="w"> </span><span class="n">tasks</span><span class="p">))</span><span class="w"></span>
 
-<span class="w">                </span><span class="k">if</span><span class="w"> </span><span class="n">task</span><span class="w"> </span><span class="ow">not</span><span class="w"> </span><span class="ow">in</span><span class="w"> </span><span class="n">finished_tasks</span><span class="p">:</span><span class="w"></span>
+<span class="w">            </span><span class="k">for</span><span class="w"> </span><span class="n">item</span><span class="w"> </span><span class="ow">in</span><span class="w"> </span><span class="n">tmp_finished</span><span class="o">.</span><span class="n">difference</span><span class="p">(</span><span class="n">finished_tasks</span><span class="p">):</span><span class="w"></span>
 
-<span class="w">                    </span><span class="n">finished_tasks</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">task</span><span class="p">)</span><span class="w"></span>
+<span class="w">                </span><span class="nb">yield</span><span class="w"> </span><span class="n">item</span><span class="w"></span>
 
-<span class="w">                    </span><span class="nb">yield</span><span class="w"> </span><span class="n">task</span><span class="w"></span>
-
-<span class="w">            </span><span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.01</span><span class="p">)</span><span class="w"></span>
+<span class="w">            </span><span class="n">finished_tasks</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">tmp_finished</span><span class="p">)</span><span class="w"></span>
 
 <span class="w">    </span><span class="err">@</span><span class="n">property</span><span class="w"></span>
 
@@ -6545,25 +6557,29 @@ True except if a timeout is given and the operation times out.</p>
 
 <span class="w">    </span><span class="n">def</span><span class="w"> </span><span class="n">as_completed</span><span class="p">(</span><span class="nl">tasks</span><span class="p">:</span><span class="w"> </span><span class="n">List</span><span class="o">[</span><span class="n">Task</span><span class="o">]</span><span class="p">)</span><span class="err">:</span><span class="w"></span>
 
+<span class="w">        </span><span class="n">def</span><span class="w"> </span><span class="n">_unfinished_tasks</span><span class="p">(</span><span class="n">task_item</span><span class="p">)</span><span class="err">:</span><span class="w"></span>
+
+<span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="k">None</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="n">task_item</span><span class="p">.</span><span class="n">is_set</span><span class="p">()</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="n">task_item</span><span class="w"></span>
+
 <span class="w">        </span><span class="n">def</span><span class="w"> </span><span class="n">_finished_tasks</span><span class="p">(</span><span class="n">task_item</span><span class="p">)</span><span class="err">:</span><span class="w"></span>
 
 <span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="n">task_item</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="n">task_item</span><span class="p">.</span><span class="n">is_set</span><span class="p">()</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="k">None</span><span class="w"></span>
 
-<span class="w">        </span><span class="n">lengthOfTasks</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nf">len</span><span class="p">(</span><span class="n">tasks</span><span class="p">)</span><span class="w"></span>
+<span class="w">        </span><span class="n">def</span><span class="w"> </span><span class="n">_continue_loop</span><span class="p">()</span><span class="err">:</span><span class="w"></span>
+
+<span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="nf">len</span><span class="p">(</span><span class="n">list</span><span class="p">(</span><span class="k">filter</span><span class="p">(</span><span class="n">_unfinished_tasks</span><span class="p">,</span><span class="w"> </span><span class="n">tasks</span><span class="p">)))</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mi">0</span><span class="w"></span>
 
 <span class="w">        </span><span class="n">finished_tasks</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">set</span><span class="p">()</span><span class="w"></span>
 
-<span class="w">        </span><span class="k">while</span><span class="w"> </span><span class="nf">len</span><span class="p">(</span><span class="n">finished_tasks</span><span class="p">)</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="nl">lengthOfTasks</span><span class="p">:</span><span class="w"></span>
+<span class="w">        </span><span class="k">while</span><span class="w"> </span><span class="n">_continue_loop</span><span class="p">()</span><span class="err">:</span><span class="w"></span>
 
-<span class="w">            </span><span class="k">for</span><span class="w"> </span><span class="n">task</span><span class="w"> </span><span class="ow">in</span><span class="w"> </span><span class="k">filter</span><span class="p">(</span><span class="n">_finished_tasks</span><span class="p">,</span><span class="w"> </span><span class="n">tasks</span><span class="p">)</span><span class="err">:</span><span class="w"></span>
+<span class="w">            </span><span class="n">tmp_finished</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">set</span><span class="p">(</span><span class="k">filter</span><span class="p">(</span><span class="n">_finished_tasks</span><span class="p">,</span><span class="w"> </span><span class="n">tasks</span><span class="p">))</span><span class="w"></span>
 
-<span class="w">                </span><span class="k">if</span><span class="w"> </span><span class="n">task</span><span class="w"> </span><span class="ow">not</span><span class="w"> </span><span class="ow">in</span><span class="w"> </span><span class="nl">finished_tasks</span><span class="p">:</span><span class="w"></span>
+<span class="w">            </span><span class="k">for</span><span class="w"> </span><span class="n">item</span><span class="w"> </span><span class="ow">in</span><span class="w"> </span><span class="n">tmp_finished</span><span class="p">.</span><span class="nf">difference</span><span class="p">(</span><span class="n">finished_tasks</span><span class="p">)</span><span class="err">:</span><span class="w"></span>
 
-<span class="w">                    </span><span class="n">finished_tasks</span><span class="p">.</span><span class="k">add</span><span class="p">(</span><span class="n">task</span><span class="p">)</span><span class="w"></span>
+<span class="w">                </span><span class="n">yield</span><span class="w"> </span><span class="n">item</span><span class="w"></span>
 
-<span class="w">                    </span><span class="n">yield</span><span class="w"> </span><span class="n">task</span><span class="w"></span>
-
-<span class="w">            </span><span class="nc">time</span><span class="p">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.01</span><span class="p">)</span><span class="w"></span>
+<span class="w">            </span><span class="n">finished_tasks</span><span class="p">.</span><span class="k">update</span><span class="p">(</span><span class="n">tmp_finished</span><span class="p">)</span><span class="w"></span>
 </code></pre></div>
 
 </details>
@@ -8439,7 +8455,7 @@ True except if a timeout is given and the operation times out.</p>
 
 <details class="example"><summary>View Source</summary><div class="codehilite"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nl">Worker</span><span class="p">:</span><span class="w"></span>
 
-<span class="w">    </span><span class="ss">&quot;&quot;&quot; &lt;a name=&quot;</span><span class="n">Worker</span><span class="ss">&quot;&gt;&lt;/a&gt;</span>
+<span class="w">    </span><span class="ss">&quot;&quot;&quot; &lt;a name=&quot;</span><span class="n">WorkerThread</span><span class="ss">&quot;&gt;&lt;/a&gt;</span>
 
 <span class="ss">            This is designed to be managed by a ThreadPool. However, it can run on its own as well. It runs until told to</span>
 

@@ -446,19 +446,21 @@
 <p>This follows the paradigm of <strong>Worker/Pool/Task/Decorator</strong> for both Threading and Multi-Process (future update). </p>
 <ul>
 <li>
-<p><strong>Worker</strong>: A worker (current version ThreadWorker) inherits from  threading.Thread. It adds extra support too easily
-kill or otherwise stop the thread. It can also can handle its own queue so it can keep receiving more functions to execute.</p>
+<p><strong>Worker</strong>: A ThreadWorker inherits from  threading.Thread. It has additional parameters that extend is functionality. 
+Examples includes adding extra support too easily kill or otherwise stop the thread, a queue so it can keep receiving 
+more functions to execute and so on.</p>
 </li>
 <li>
-<p><strong>Pool</strong>: Manages multiple worker Threads or Processes depending on if it is a ThreadPool or ProcessPool. Pools use a
-PriorityQueue to send Tasks into a given number of Threads/Processes. It can attempt to spin up and down the number of 
-necessary Workers depending on the number of tasks and the number of CPU Cores on the machine. A programmer can adjust 
-the number of workers in a pool as well. The Pool also provides helpful properties.</p>
+<p><strong>Pool</strong>: Manages multiple Workers. Pools use a PriorityQueue to send Tasks into a given number of Threads/Processes. 
+It can attempt to spin up and down the number of necessary Workers depending on the number of tasks and the number of 
+CPU Cores on the machine. A programmer can adjust the number of workers in a pool as well. The Pool provides many 
+additional methods, properties, functionality that is helpful when dealing with large amounts of threads.</p>
 </li>
 <li>
 <p><strong>Task</strong>: A Task object inherits from threading.Event and thus can be waited on. The event is set when the Task is 
 complete. The Task can also sync with other events via a Semaphore. It saves the results of a given function, it can
-handle a call back function, it can inject itself into given functions whenever possible, and it is serializable.</p>
+handle a call back function, it can inject itself into given functions whenever possible, and it is serializable, and
+much more.</p>
 </li>
 <li>
 <p><strong>Decorator</strong>: This toolkit comes with 3 Decorators for threading. 'Limiter', 'Threaded', and 'Processed' 
@@ -486,8 +488,9 @@ same paradigm and have the same features.</p>
 <span class="n">task</span> <span class="o">=</span> <span class="n">p1</span><span class="o">.</span><span class="n">submit</span><span class="p">(</span><span class="n">test</span><span class="p">,</span> <span class="s2">&quot;arg&quot;</span><span class="p">,</span> <span class="n">example</span><span class="o">=</span><span class="s2">&quot;kwargs&quot;</span><span class="p">)</span>
 </code></pre></div>
 
-<p>When you execute a function that has been wrapped by threaded you get a task back. You can wait on the task as it is
-an Event object which also stores results.</p>
+<p>Submit returns a Task object. Task stores results and is also an Event object. Below example also shows the
+'submit_task_priority' priority keyword can provide the priority that the task should be treated when it is put into
+the TaskQueue. </p>
 <div class="codehilite"><pre><span></span><code><span class="kn">from</span> <span class="nn">PyMultiTasking</span> <span class="kn">import</span> <span class="n">ThreadPool</span> <span class="k">as</span> <span class="n">Pool</span>
 <span class="n">p1</span> <span class="o">=</span> <span class="n">Pool</span><span class="p">()</span>
 <span class="n">task</span> <span class="o">=</span> <span class="n">p1</span><span class="o">.</span><span class="n">submit</span><span class="p">(</span><span class="n">test</span><span class="p">,</span> <span class="s2">&quot;arg&quot;</span><span class="p">,</span> <span class="n">example</span><span class="o">=</span><span class="s2">&quot;kwargs&quot;</span><span class="p">,</span> <span class="n">submit_task_priority</span><span class="o">=</span><span class="mi">100</span><span class="p">)</span> <span class="c1"># The default priority is 10</span>
@@ -541,8 +544,8 @@ tasks out evenly across the workers.</p>
 
 <h3 id="decorator-examples">Decorator Examples</h3>
 <hr />
-<p>Currently there is only the 'Threaded' decorator for multitasking. However, future releases will have the Processed 
-decorator and its will have all the same features.</p>
+<p>Currently, there is only the 'Threaded' decorator for multitasking. However, future releases will have the Processed 
+decorator and will have all the same features.</p>
 <p>You can make any function or method threaded by simply using the decorator. Each time the 'test' method is called 
 it will now respond with a Task object and a Worker will be spawned to execute the function code block.</p>
 <div class="codehilite"><pre><span></span><code><span class="kn">from</span> <span class="nn">PyMultiTasking</span> <span class="kn">import</span> <span class="n">Threaded</span>
@@ -550,6 +553,12 @@ it will now respond with a Task object and a Worker will be spawned to execute t
 <span class="nd">@Threaded</span>
 <span class="k">def</span> <span class="nf">test</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">args</span><span class="si">}</span><span class="s1"> - </span><span class="si">{</span><span class="n">kwargs</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+
+<span class="n">task</span> <span class="o">=</span> <span class="n">test</span><span class="p">()</span>
+<span class="k">if</span> <span class="n">task</span><span class="o">.</span><span class="n">wait</span><span class="p">(</span><span class="mi">10</span><span class="p">):</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">task</span><span class="o">.</span><span class="n">results</span><span class="p">)</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">task</span><span class="si">}</span><span class="s2"> not finished&quot;</span><span class="p">)</span>
 </code></pre></div>
 
 <p>Threaded also has the 'daemon' parameter. This spawns a single Worker thread and keeps it alive instead of ending it 
@@ -579,7 +588,8 @@ makes this easy.</p>
 with the name provided if one doesn't already exist in the Pool registry. This is useful if the developer wants to 
 use a Pool across multiple functions and/or want to join/block/wait on the Pool and thus all associated functions.</p>
 <div class="codehilite"><pre><span></span><code><span class="kn">from</span> <span class="nn">PyMultiTasking</span> <span class="kn">import</span> <span class="n">Threaded</span><span class="p">,</span> <span class="n">ThreadPool</span> <span class="k">as</span> <span class="n">Pool</span>
-<span class="n">pool_name</span> <span class="o">=</span> <span class="s1">&#39;mypool&#39;</span> <span class="c1"># Global varaible</span>
+<span class="n">pool_name</span> <span class="o">=</span> <span class="s1">&#39;mypool&#39;</span> <span class="c1"># Global variable</span>
+
 
 <span class="nd">@Threaded</span><span class="p">(</span><span class="n">pool_name</span><span class="o">=</span><span class="n">pool_name</span><span class="p">)</span>
 <span class="k">def</span> <span class="nf">test_dec_pool_by_name_one</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
@@ -589,6 +599,7 @@ use a Pool across multiple functions and/or want to join/block/wait on the Pool 
 <span class="nd">@Threaded</span><span class="p">(</span><span class="n">pool_name</span><span class="o">=</span><span class="n">pool_name</span><span class="p">)</span>
 <span class="k">def</span> <span class="nf">test_dec_pool_by_name_twp</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Running: test_dec_pool_by_name_twp - args=</span><span class="si">{</span><span class="n">args</span><span class="si">}</span><span class="s2"> - kwargs=</span><span class="si">{</span><span class="n">kwargs</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
 
 <span class="n">tasksOne</span> <span class="o">=</span> <span class="p">[</span><span class="n">test_dec_pool_by_name_one</span><span class="p">(</span><span class="n">randomsleep</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">4</span><span class="p">)]</span>
 <span class="n">tasksTwo</span> <span class="o">=</span> <span class="p">[</span><span class="n">test_dec_pool_by_name_twp</span><span class="p">(</span><span class="n">randomsleep</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">4</span><span class="p">)]</span>
@@ -613,18 +624,35 @@ parameter. Learn more about the callback_func parameter by reading the Task clas
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">args</span><span class="si">}</span><span class="s1"> - </span><span class="si">{</span><span class="n">kwargs</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
 </code></pre></div>
 
-<p>Threaded can also pass parameters directly to the Task/Worker/Pool. Lets combine some of the above things together now.
-It can submit information to a Task with '<em>task</em><keyword>' and to a worker following the same schema '<em>worker</em><keyword>'
-and again the same for pool ie: '<em>pool</em><keyword>'</p>
-<div class="codehilite"><pre><span></span><code><span class="kn">from</span> <span class="nn">PyMultiTasking</span> <span class="kn">import</span> <span class="n">Threaded</span>
+<p>Threaded can also pass parameters directly to the Task/Worker/Pool. It can submit information to a Task with 
+'<em>task</em><keyword>' and to a worker following the same schema '<em>worker</em><keyword>' and again the same for pool 
+ie: '<em>pool</em><keyword>'</p>
+<p>Let's combine some of the above things together now. </p>
+<div class="codehilite"><pre><span></span><code><span class="kn">from</span> <span class="nn">random</span> <span class="kn">import</span> <span class="n">randint</span>
+<span class="kn">from</span> <span class="nn">PyMultiTasking</span> <span class="kn">import</span> <span class="n">Limiter</span><span class="p">,</span> <span class="n">Threaded</span><span class="p">,</span> <span class="n">ThreadPool</span> <span class="k">as</span> <span class="n">Pool</span>
+<span class="n">store_values</span> <span class="o">=</span> <span class="p">[]</span> <span class="c1"># Global variable used because the task isn&#39;t going to store the results.</span>
 
+<span class="c1"># Learn about the Limiter in the following section.</span>
+<span class="nd">@Limiter</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span> <span class="c1"># Because of the limiter the store_values object will not be appended to more than one at a time.</span>
 <span class="k">def</span> <span class="nf">callback_test</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="c1"># This will receive the return value of each &#39;test&#39; method call.</span>
+    <span class="k">global</span> <span class="n">store_values</span>
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;callback_test - Completed: </span><span class="si">{</span><span class="n">args</span><span class="si">}</span><span class="s1"> - </span><span class="si">{</span><span class="n">kwargs</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
-    <span class="k">return</span> <span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">store_values</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">args</span><span class="p">)</span>
+
 
 <span class="nd">@Threaded</span><span class="p">(</span><span class="n">callback_func</span><span class="o">=</span><span class="n">callback_test</span><span class="p">,</span> <span class="n">pool_name</span><span class="o">=</span><span class="s1">&#39;mypool&#39;</span><span class="p">,</span> <span class="n">_pool_maxWorkers</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">_task_store_return</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 <span class="k">def</span> <span class="nf">test</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">args</span><span class="si">}</span><span class="s1"> - </span><span class="si">{</span><span class="n">kwargs</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">randint</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">10</span><span class="p">)</span> <span class="c1"># Return a random number from 0 to 10.</span>
+
+
+<span class="n">tasks</span> <span class="o">=</span> <span class="p">[</span><span class="n">test</span><span class="p">()</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">4</span><span class="p">)]</span>
+
+<span class="n">pool</span> <span class="o">=</span> <span class="n">Pool</span><span class="o">.</span><span class="n">get_pool_by_name</span><span class="p">(</span><span class="s1">&#39;mypool&#39;</span><span class="p">)</span> <span class="c1"># Get the Pool associated with the two above functions.</span>
+<span class="n">pool</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">block</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="c1"># Ends the Pool.</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Stored Values: </span><span class="si">{</span><span class="n">store_values</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 </code></pre></div>
 
 <h3 id="the-limiter">The Limiter</h3>
@@ -646,10 +674,10 @@ lock before executing the wrapped function and let it go after the function is c
 a semephore onto the function as an argument '_task_semaphore'. This assumes that Limiter is wrapping another decorator 
 like Threaded but this is not necessary as long as the wrapped function is able to handle the '_task_semaphore' 
 parameter. </p>
-<p>The following example will not block the calling of the function even if it is called more than twice. If this was 
-called 4 times in a loop all 4 calls would execute quickly and return Tasks and have spawned 4 Workers. However, two
-of the Workers would be waiting for a lock. Once any one of the active Workers completes the Task and releases the lock
-another Worker can then execute their task.</p>
+<p>The following example will not block the calling of the function even if it is called more than twice. In the example
+below it is called 4 times in a loop. All 4 calls would execute quickly and return Tasks and have spawned 4 Workers. 
+However, two of the Workers would be waiting for a lock. Once any one of the active Workers completes the Task and 
+releases the lock another Worker can then execute their task.</p>
 <div class="codehilite"><pre><span></span><code><span class="kn">from</span> <span class="nn">PyMultiTasking</span> <span class="kn">import</span> <span class="n">Limiter</span><span class="p">,</span> <span class="n">Threaded</span><span class="p">,</span> <span class="n">ThreadPool</span> <span class="k">as</span> <span class="n">Pool</span>
 
 <span class="nd">@Limiter</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="n">blocking</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
@@ -664,7 +692,7 @@ another Worker can then execute their task.</p>
 </code></pre></div>
 
 <ul>
-<li>NOTE: Doesn't use a Limiter if it is wrapping Threaded(daemon=True). Although this technically would not break
+<li>NOTE: Do not use a Limiter if it is wrapping Threaded(daemon=True). Although this technically would not break
 anything it is pointless.</li>
 </ul>
                 

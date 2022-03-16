@@ -53,7 +53,7 @@ def test(*args, **kwargs):
 
 To work directly with a Pool and submit a tasks:
 ```python
-from PyThreadingPool.ThreadingPool import Pool
+from PyMultiTasking import ThreadPool as Pool
 p1 = Pool()
 task = p1.submit(test, "arg", example="kwargs")
 ```

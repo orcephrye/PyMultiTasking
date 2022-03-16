@@ -1513,25 +1513,29 @@
 
 <span class="w">    </span><span class="n">def</span><span class="w"> </span><span class="n">as_completed</span><span class="p">(</span><span class="nl">tasks</span><span class="p">:</span><span class="w"> </span><span class="n">List</span><span class="o">[</span><span class="n">Task</span><span class="o">]</span><span class="p">)</span><span class="err">:</span><span class="w"></span>
 
+<span class="w">        </span><span class="n">def</span><span class="w"> </span><span class="n">_unfinished_tasks</span><span class="p">(</span><span class="n">task_item</span><span class="p">)</span><span class="err">:</span><span class="w"></span>
+
+<span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="k">None</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="n">task_item</span><span class="p">.</span><span class="n">is_set</span><span class="p">()</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="n">task_item</span><span class="w"></span>
+
 <span class="w">        </span><span class="n">def</span><span class="w"> </span><span class="n">_finished_tasks</span><span class="p">(</span><span class="n">task_item</span><span class="p">)</span><span class="err">:</span><span class="w"></span>
 
 <span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="n">task_item</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="n">task_item</span><span class="p">.</span><span class="n">is_set</span><span class="p">()</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="k">None</span><span class="w"></span>
 
-<span class="w">        </span><span class="n">lengthOfTasks</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nf">len</span><span class="p">(</span><span class="n">tasks</span><span class="p">)</span><span class="w"></span>
+<span class="w">        </span><span class="n">def</span><span class="w"> </span><span class="n">_continue_loop</span><span class="p">()</span><span class="err">:</span><span class="w"></span>
+
+<span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="nf">len</span><span class="p">(</span><span class="n">list</span><span class="p">(</span><span class="k">filter</span><span class="p">(</span><span class="n">_unfinished_tasks</span><span class="p">,</span><span class="w"> </span><span class="n">tasks</span><span class="p">)))</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mi">0</span><span class="w"></span>
 
 <span class="w">        </span><span class="n">finished_tasks</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">set</span><span class="p">()</span><span class="w"></span>
 
-<span class="w">        </span><span class="k">while</span><span class="w"> </span><span class="nf">len</span><span class="p">(</span><span class="n">finished_tasks</span><span class="p">)</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="nl">lengthOfTasks</span><span class="p">:</span><span class="w"></span>
+<span class="w">        </span><span class="k">while</span><span class="w"> </span><span class="n">_continue_loop</span><span class="p">()</span><span class="err">:</span><span class="w"></span>
 
-<span class="w">            </span><span class="k">for</span><span class="w"> </span><span class="n">task</span><span class="w"> </span><span class="ow">in</span><span class="w"> </span><span class="k">filter</span><span class="p">(</span><span class="n">_finished_tasks</span><span class="p">,</span><span class="w"> </span><span class="n">tasks</span><span class="p">)</span><span class="err">:</span><span class="w"></span>
+<span class="w">            </span><span class="n">tmp_finished</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">set</span><span class="p">(</span><span class="k">filter</span><span class="p">(</span><span class="n">_finished_tasks</span><span class="p">,</span><span class="w"> </span><span class="n">tasks</span><span class="p">))</span><span class="w"></span>
 
-<span class="w">                </span><span class="k">if</span><span class="w"> </span><span class="n">task</span><span class="w"> </span><span class="ow">not</span><span class="w"> </span><span class="ow">in</span><span class="w"> </span><span class="nl">finished_tasks</span><span class="p">:</span><span class="w"></span>
+<span class="w">            </span><span class="k">for</span><span class="w"> </span><span class="n">item</span><span class="w"> </span><span class="ow">in</span><span class="w"> </span><span class="n">tmp_finished</span><span class="p">.</span><span class="nf">difference</span><span class="p">(</span><span class="n">finished_tasks</span><span class="p">)</span><span class="err">:</span><span class="w"></span>
 
-<span class="w">                    </span><span class="n">finished_tasks</span><span class="p">.</span><span class="k">add</span><span class="p">(</span><span class="n">task</span><span class="p">)</span><span class="w"></span>
+<span class="w">                </span><span class="n">yield</span><span class="w"> </span><span class="n">item</span><span class="w"></span>
 
-<span class="w">                    </span><span class="n">yield</span><span class="w"> </span><span class="n">task</span><span class="w"></span>
-
-<span class="w">            </span><span class="nc">time</span><span class="p">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.01</span><span class="p">)</span><span class="w"></span>
+<span class="w">            </span><span class="n">finished_tasks</span><span class="p">.</span><span class="k">update</span><span class="p">(</span><span class="n">tmp_finished</span><span class="p">)</span><span class="w"></span>
 </code></pre></div>
 
 </details>
