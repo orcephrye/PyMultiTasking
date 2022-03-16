@@ -13,15 +13,19 @@ A set of tools for achieving concurrency in Python 3 easily.
 ---
 
 This follows the paradigm of **Worker/Pool/Task/Decorator** for both Threading and Multi-Process (future update). 
+
 * **Worker**: A worker (current version ThreadWorker) inherits from  threading.Thread. It adds extra support too easily
 kill or otherwise stop the thread. It can also can handle its own queue so it can keep receiving more functions to execute.
+
 * **Pool**: Manages multiple worker Threads or Processes depending on if it is a ThreadPool or ProcessPool. Pools use a
 PriorityQueue to send Tasks into a given number of Threads/Processes. It can attempt to spin up and down the number of 
 necessary Workers depending on the number of tasks and the number of CPU Cores on the machine. A programmer can adjust 
 the number of workers in a pool as well. The Pool also provides helpful properties.
+
 * **Task**: A Task object inherits from threading.Event and thus can be waited on. The event is set when the Task is 
 complete. The Task can also sync with other events via a Semaphore. It saves the results of a given function, it can
 handle a call back function, it can inject itself into given functions whenever possible, and it is serializable.
+
 * **Decorator**: This toolkit comes with 3 Decorators for threading. 'Limiter', 'Threaded', and 'Processed' 
 (future update). Limiter works to limit how many times a function/method can be run simultaneously. While Threaded is a
 simple way to make a Function/Method threaded. Whenever @Threaded is used the wrapped function returns a Task instead
