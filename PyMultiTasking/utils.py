@@ -248,7 +248,7 @@ def method_wait(func: Callable[..., Any], timeout: int = 60, delay: float = 0.1,
 
 
 # noinspection PyPep8Naming
-def Limiter(num, call_only=False):
+def Limiter(num, blocking=True):
     """ This is a decorator designed to decorate Threaded and Proccessed decorators to limit the number of
         simultaneous calls.
     """
@@ -257,7 +257,7 @@ def Limiter(num, call_only=False):
     def wrapper(func):
         @wraps(func)
         def wrapped(*args, **kwargs):
-            if call_only:
+            if blocking:
                 with sem:
                     return func(*args, **kwargs)
             else:
@@ -310,7 +310,7 @@ class __PyMultiDec:
     pType = None
 
     def __init__(self, *args, **kwargs):
-        print(f'making Class Dec: args={args} - kwargs={kwargs}')
+        _log.info(f'making Class Dec: args={args} - kwargs={kwargs}')
         if len(args) == 1 and callable(args[0]) and len(kwargs) == 0:
             self.func = args[0]
         else:
@@ -338,11 +338,11 @@ class __PyMultiDec:
                                                                      if k.startswith('_pool_')})
 
     def __call__(self, *args, **kwargs):
-        print(f'calling test_dec: args={args} - kwargs={kwargs}')
+        _log.debug(f'calling test_dec: args={args} - kwargs={kwargs}')
 
         @wraps(self.func)
         def wrapper(*a, **kw):
-            print(f'Within wrapper: args={a} - kwargs={kw}')
+            _log.debug(f'Within wrapper: args={a} - kwargs={kw}')
             kw.update({k.replace('_task_', ''): v for k, v in kwargs.items() if k.startswith('_task_')})
             keywords = {k.replace('_task_', ''): v for k, v in kw.items() if k.startswith('_task_')}
             for key in keywords:
@@ -503,7 +503,7 @@ class Task(Event):
 
 
 class Worker:
-    """ <a name="WorkerThread"></a>
+    """ <a name="Worker"></a>
             This is designed to be managed by a ThreadPool. However, it can run on its own as well. It runs until told to
             stop and works tasks that come from a the PriorityTaskQueue maintained by the Pool.
         """
@@ -1014,21 +1014,19 @@ class Pool:
     @staticmethod
     def as_completed(tasks: List[Task]):
 
-        def _unfinished_tasks(task_item):
-            return None if task_item.is_set() else task_item
-
         def _finished_tasks(task_item):
             return task_item if task_item.is_set() else None
 
-        def _continue_loop():
-            return len(list(filter(_unfinished_tasks, tasks))) > 0
-
+        lengthOfTasks = len(tasks)
         finished_tasks = set()
-        while _continue_loop():
-            tmp_finished = set(filter(_finished_tasks, tasks))
-            for item in tmp_finished.difference(finished_tasks):
-                yield item
-            finished_tasks.update(tmp_finished)
+
+        while len(finished_tasks) < lengthOfTasks:
+
+            for task in filter(_finished_tasks, tasks):
+                if task not in finished_tasks:
+                    finished_tasks.add(task)
+                    yield task
+            time.sleep(0.01)
 
     @property
     def unfinished_tasks(self) -> int:
