@@ -26,7 +26,7 @@ path = "PyMultiTasking/__init__.py"
 
 [tool.hatch.build.targets.sdist]
 include = [
-    "/PyController",
+    "/PyMultiTasking",
 ]
 exclude = [
   "/.github",
@@ -34,7 +34,7 @@ exclude = [
 ]
 
 [tool.hatch.build.targets.wheel]
-packages = ["PyController/"]
+packages = ["PyMultiTasking/"]
 
 [[tool.hatch.envs.test.matrix]]
 python = ["3.8", "3.9", "3.10", "3.11"]
