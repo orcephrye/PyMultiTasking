@@ -124,4 +124,4 @@ class ThreadPool(Pool):
 
 
 if __name__ == '__main__':
-    print(f'This should be called as a module.')
+    print('This should be called as a module.')

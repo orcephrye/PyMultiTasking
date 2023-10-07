@@ -58,7 +58,6 @@ import inspect
 import uuid
 import ctypes
 from queue import PriorityQueue, Empty, Queue
-from multiprocessing import Manager
 from multiprocessing.queues import JoinableQueue
 from multiprocessing.synchronize import RLock, SemLock
 from multiprocessing import RLock as MultiProcRLock
@@ -275,12 +274,12 @@ class PriorityTaskQueue(PriorityQueue):
 
     def put_nowait(self, item: Task) -> None:
         if not isinstance(item, Task):
-            raise TypeError(f'[ERROR]: item is not a Task object cannot be put into PriorityTaskQueue')
+            raise TypeError('[ERROR]: item is not a Task object cannot be put into PriorityTaskQueue')
         return super().put_nowait(item)
 
     def put(self, item: Task, block: bool = True, timeout: Union[int, float, None] = None) -> None:
         if not isinstance(item, Task):
-            raise TypeError(f'[ERROR]: item is not a Task object cannot be put into PriorityTaskQueue')
+            raise TypeError('[ERROR]: item is not a Task object cannot be put into PriorityTaskQueue')
         return super().put(item, block=block, timeout=timeout)
 
 
@@ -295,12 +294,12 @@ class ProcessTaskQueue(JoinableQueue):
 
     def put_nowait(self, item: Task) -> None:
         if not isinstance(item, Task):
-            raise TypeError(f'[ERROR]: item is not a Task object cannot be put into PriorityTaskQueue')
+            raise TypeError('[ERROR]: item is not a Task object cannot be put into PriorityTaskQueue')
         return super().put_nowait(item)
 
     def put(self, item: Task, block: bool = True, timeout: Union[int, float, None] = None) -> None:
         if not isinstance(item, Task):
-            raise TypeError(f'[ERROR]: item is not a Task object cannot be put into PriorityTaskQueue')
+            raise TypeError('[ERROR]: item is not a Task object cannot be put into PriorityTaskQueue')
         return super().put(item, block=block, timeout=timeout)
 
 
@@ -581,7 +580,7 @@ class Worker:
             while not self.killed:
                 task = self.get_next_task()
                 if task is None:
-                    self.log.info(f'task is None an error occurred in get_next_task method closing the thread')
+                    self.log.info('task is None an error occurred in get_next_task method closing the thread')
                     break
                 elif task is not False:
                     self.log.info(f'The task is: {task}')
@@ -742,7 +741,7 @@ class Pool:
         - :return: (bool)
         """
 
-        self.log.debug(f"Attempting to add new worker!")
+        self.log.debug("Attempting to add new worker!")
         if self.state in (__STOPPING__, __STOPPED__) and allow_restart is False:
             return False
         if self.num_workers >= self.maxWorkers:
@@ -898,7 +897,7 @@ class Pool:
             current_time = time.monotonic()
             while current_time < start_time + timeout:
                 if self.num_workers <= 0:
-                    self.log.info(f'There are no more workers. No need for forced timeout')
+                    self.log.info('There are no more workers. No need for forced timeout')
                     break
                 e.wait(timeout=0.1)
                 current_time = time.monotonic()
